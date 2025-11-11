@@ -1,0 +1,43 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# -------------------------------------------------------------
+# CodeRabbit 기본 설정
+# 작성자: Lee Heesun
+# -------------------------------------------------------------
+
+# 리뷰 언어를 한국어로 설정
+language: "ko-KR"
+
+# 리뷰 톤: 주니어에게 친절히 설명하는 시니어 프론트엔드 엔지니어
+tone_instructions: "You are a senior frontend engineer who teaches junior developers in a clear and kind way."
+
+reviews:
+  # 리뷰 피드백 핵심중심
+  profile: "chill"
+
+  # 모든 코멘트가 해결되고 체크 통과 시 자동 승인하지 않음 (수동 승인)
+  request_changes_workflow: false
+
+  # PR 전체 요약을 자동으로 생성
+  high_level_summary: true
+
+  # 시 생성 기능 비활성화
+  poem: false
+
+  # 리뷰 상태(진행 중 / 완료)를 PR에 표시
+  review_status: true
+
+  # Walkthrough(리뷰 리포트) 접히는 섹션 비활성화
+  collapse_walkthrough: false
+
+  # 자동 코드 리뷰 설정
+  auto_review:
+    enabled: true # 자동 리뷰 켜기
+    drafts: false # Draft PR은 제외
+    base_branches:
+      - ".*" # 모든 브랜치 리뷰
+
+  # 코드 분석 도구 설정
+  tools:
+    eslint:
+      enabled: true # ESLint (JS/TS 정적 분석)
+
