@@ -1,0 +1,25 @@
+:root {
+  /* Primary / Buttons */
+  --color-primary: #007aff;
+  --color-primary-20: rgba(0, 122, 255, 0.2);
+
+  /* Text */
+  --text-primary: #222222;
+  --text-secondary: #555555;
+  --text-tertiary: #666666;
+  --text-inverse: #ffffff;
+  --text-disabled: rgba(255, 255, 255, 0.5);
+
+  /* Background */
+  --bg-primary: #ffffff;
+  --bg-muted: rgba(255, 255, 255, 0.8);
+
+  /* Accent */
+  --accent: #ff9e57;
+
+  /* Borders / grays */
+  --border-light: #d1d5dc;
+  --border-soft: #e5ded0;
+  --border-dark: #000000;
+
+}
