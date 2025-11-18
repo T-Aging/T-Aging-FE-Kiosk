@@ -1,8 +1,15 @@
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Layout from "./components/layout/KioskLayout";
-import "./assets/styles/color.css";
-import "./assets/styles/style.css";
+import SplashScreen from "./pages/SplashScreen";
+import MembershipCheck from "./pages/MembershipCheck";
+import VerificationMethod from "./pages/VerificationMethod";
+import PhoneInput from "./pages/PhoneInput";
+import QRScan from "./pages/QRScan";
+import RecentOrders from "./pages/RecentOrders";
+import ConversationalOrder from "./pages/ConversationalOrder";
+import OrderConfirmation from "./pages/OrderConfirmation";
+import OrderComplete from "./pages/OrderComplete";
 
 const router = createBrowserRouter([
   {
