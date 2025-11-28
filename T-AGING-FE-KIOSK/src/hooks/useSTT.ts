@@ -12,7 +12,7 @@ export const useSTT = () => {
         formData,
         {
           headers: {
-            Authorization: `Bearer ${import.meta.env.VITE_OPENAI_KEY}`,
+            Authorization: `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`,
           },
         }
       );
