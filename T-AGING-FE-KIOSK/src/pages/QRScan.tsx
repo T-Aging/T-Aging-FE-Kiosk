@@ -44,7 +44,9 @@ const QRScan = () => {
           <QrReader
             onResult={handleResult}
             scanDelay={300}
-            constraints={{ facingMode: "environment" }}
+            constraints={{
+              facingMode: { ideal: "environment" },
+            }}
             videoStyle={{ width: "100%", height: "100%", objectFit: "cover" }}
           />
         </div>
