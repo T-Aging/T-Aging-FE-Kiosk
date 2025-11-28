@@ -36,7 +36,6 @@ function App() {
   return (
     <>
       <PWAInstallUI />
-
       <QueryClientProvider client={queryClient}>
         <RouterProvider router={router} />
       </QueryClientProvider>
