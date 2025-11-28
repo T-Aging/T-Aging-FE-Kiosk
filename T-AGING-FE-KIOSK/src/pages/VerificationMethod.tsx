@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import masil from "@/assets/images/masil.png";
 import phoneIcon from "@/assets/images/verificationMethod_phone_number.png";
