@@ -20,5 +20,8 @@ export default defineConfig({
       "@utils": path.resolve(__dirname, "src/utils"),
     },
   },
+    optimizeDeps: {
+    include: ["qr-scanner"],
+  },
 });
 // https://vitejs.dev/config/
