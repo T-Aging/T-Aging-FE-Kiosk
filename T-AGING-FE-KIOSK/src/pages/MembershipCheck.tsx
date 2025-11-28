@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
+import masil from "@/assets/images/masil.png";
 
 const MembershipCheck = () => {
   const navigate = useNavigate();
@@ -18,11 +19,7 @@ const MembershipCheck = () => {
       <div className="flex flex-1 flex-col items-center overflow-y-auto">
         {/* 캐릭터 + 질문 */}
         <div className="flex items-center pt-[8vh]">
-          <img
-            src="src/assets/images/masil.png"
-            alt="masil"
-            className="mb-[3vh] h-auto w-[30vw]"
-          />
+          <img src={masil} alt="masil" className="mb-[3vh] h-auto w-[30vw]" />
 
           <div className="mb-[2vh] rounded-2xl border-3 border-(--border-light) bg-white px-[10vw] py-[2vh] text-[5vw] text-(--text-primary) shadow-md">
             회원이신가요?
