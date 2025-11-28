@@ -10,6 +10,7 @@ import RecentOrders from "./pages/RecentOrders";
 import ConversationalOrder from "./pages/ConversationalOrder";
 import OrderConfirmation from "./pages/OrderConfirmation";
 import OrderComplete from "./pages/OrderComplete";
+import PWAInstallUI from "@/components/PWAInstallUI";
 
 const router = createBrowserRouter([
   {
@@ -34,6 +35,8 @@ const queryClient = new QueryClient();
 function App() {
   return (
     <>
+      <PWAInstallUI />
+
       <QueryClientProvider client={queryClient}>
         <RouterProvider router={router} />
       </QueryClientProvider>

@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
+import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
   plugins: [
@@ -9,7 +10,25 @@ export default defineConfig({
         plugins: [["babel-plugin-react-compiler"]],
       },
     }),
+
+    VitePWA({
+      registerType: "autoUpdate",
+
+      manifest: false,
+
+      workbox: {
+        globPatterns: ["**/*.{js,css,html,png,svg,ico,jpg,jpeg}"], 
+      },
+
+      includeAssets: [
+        "apple-icon-120x120.png",
+        "apple-icon-152x152.png",
+        "apple-icon-180x180.png",
+        "android-icon-192x192.png"
+      ],
+    }),
   ],
+
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "src"),
@@ -20,8 +39,10 @@ export default defineConfig({
       "@utils": path.resolve(__dirname, "src/utils"),
     },
   },
-    optimizeDeps: {
+
+  optimizeDeps: {
     include: ["qr-scanner"],
   },
 });
+
 // https://vitejs.dev/config/
