@@ -13,15 +13,49 @@ export default defineConfig({
 
     VitePWA({
       registerType: "autoUpdate",
+
+      manifest: {
+        name: "Masil Kiosk",
+        short_name: "Kiosk",
+        description: "AI agent 기반 주문 키오스크",
+        start_url: "/",
+        display: "standalone",
+        background_color: "#ffffff",
+        theme_color: "#ffffff",
+
+        icons: [
+          {
+            src: "/android-icon-192x192.png",
+            sizes: "192x192",
+            type: "image/png",
+          },
+          {
+            src: "/apple-icon-180x180.png",
+            sizes: "180x180",
+            type: "image/png",
+          },
+          {
+            src: "/apple-icon-152x152.png",
+            sizes: "152x152",
+            type: "image/png",
+          },
+          {
+            src: "/apple-icon-120x120.png",
+            sizes: "120x120",
+            type: "image/png",
+          },
+        ],
+      },
+
       workbox: {
-        globPatterns: ["**/*.{js,css,html,png,svg,ico,jpg,jpeg}"], 
+        globPatterns: ["**/*.{js,css,html,png,svg,ico,jpg,jpeg}"],
       },
 
       includeAssets: [
         "apple-icon-120x120.png",
         "apple-icon-152x152.png",
         "apple-icon-180x180.png",
-        "android-icon-192x192.png"
+        "android-icon-192x192.png",
       ],
     }),
   ],
@@ -41,5 +75,3 @@ export default defineConfig({
     include: ["qr-scanner"],
   },
 });
-
-// https://vitejs.dev/config/
