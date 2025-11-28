@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
+import masil from "@/assets/images/masil.png";
 
 const SplashScreen = () => {
   const navigate = useNavigate();
@@ -14,30 +15,29 @@ const SplashScreen = () => {
   };
 
   return (
-    <div className="relative flex h-full w-full flex-col items-center justify-center bg-(--bg-primary)">
-      <img
-        src="src/assets/images/masil.png"
-        alt="masil-logo"
-        className="mb-6 h-[50vw] w-[50vw]"
-      />
+    <div className="relative flex h-full w-full flex-col bg-(--bg-primary)">
+      {/* CONTENT */}
+      <div className="flex flex-1 flex-col items-center justify-center">
+        <img src={masil} alt="masil-logo" className="mb-6 h-[60vw] w-[60vw]" />
 
-      <h1 className="text-[6rem] font-semibold text-(--text-primary) mb-2">
-        환영합니다
-      </h1>
+        <h1 className="mb-2 text-[12vw] font-semibold text-(--text-primary)">
+          환영합니다
+        </h1>
 
-      <p className="text-[3rem] text-(--text-secondary) mb-10 text-center leading-tight">
-        주문을 시작하려면 <br /> 화면을 터치하세요
-      </p>
+        <p className="mb-10 text-center text-[6vw] leading-tight text-(--text-secondary)">
+          주문을 시작하려면 <br /> 화면을 터치하세요
+        </p>
 
-      <button
-        onClick={handleStart}
-        className="bg-(--color-primary) text-(--text-inverse) text-[3rem] font-medium
-        px-12 py-4 rounded-xl shadow-md active:scale-95 transition"
-      >
-        주문 시작하기
-      </button>
+        <button
+          onClick={handleStart}
+          className="rounded-xl bg-(--color-primary) px-12 py-4 text-[8vw] font-medium text-(--text-inverse) shadow-md transition active:scale-95"
+        >
+          주문 시작하기
+        </button>
+      </div>
 
-      <footer className="h-[12vh] flex items-center justify-center text-[3vw] text-(--text-tertiary)">
+      {/* FOOTER */}
+      <footer className="flex h-[10vh] w-full items-center justify-start pl-[3vw] text-[4.5vw] text-(--text-tertiary)">
         🔊 음성 안내 중입니다
       </footer>
     </div>
