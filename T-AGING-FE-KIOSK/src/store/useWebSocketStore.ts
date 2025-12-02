@@ -18,7 +18,7 @@ export const useKioskStore = create<KioskState>((set, get) => ({
   connect: () => {
     if (get().socket) return;
 
-    const ws = new WebSocket(import.meta.env.VITE_API_URL);
+    const ws = new WebSocket(import.meta.env.VITE_WS_URL);
 
     ws.onopen = () => {
       // 연결되면 자동 start 요청
