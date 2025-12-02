@@ -4,6 +4,7 @@ import masil from "@/assets/images/masil.png";
 import micIcon from "@/assets/images/conversational_order_mic_icon.png";
 import { useTTS } from "@/hooks/useTTS";
 import { useSTT } from "@/hooks/useSTT";
+import { useKioskStore } from "@/store/useWebSocketStore";
 
 type Message = {
   id: number;
@@ -18,6 +19,9 @@ const ConversationalOrder = () => {
   const { playTTS } = useTTS();
   const { playSTT } = useSTT();
 
+  // 🔥 WebSocket 기반 대화용
+  const { sendConverse, lastReply } = useKioskStore();
+
   const [messages, setMessages] = useState<Message[]>([
     { id: 1, text: "무엇을 도와드릴까요? 주문을 말씀해주세요!", sender: "bot" },
   ]);
@@ -28,8 +32,20 @@ const ConversationalOrder = () => {
     setTitle("대화 주문");
   }, [setTitle]);
 
+  // 🔥 서버 reply 수신하면 즉시 채팅에 반영하는 부분
+  useEffect(() => {
+    if (!lastReply) return;
+
+    setMessages((prev) => [
+      ...prev,
+      { id: Date.now(), sender: "bot", text: lastReply },
+    ]);
+
+    playTTS(lastReply);
+  }, [lastReply, playTTS]);
+
   // =============================
-  // 1. 음성 녹음 → Blob 생성
+  // 1. 음성 녹음 → STT → userMessage 처리
   // =============================
   const startRecording = async () => {
     setIsListening(true);
@@ -44,10 +60,7 @@ const ConversationalOrder = () => {
       const blob = new Blob(chunks, { type: "audio/webm" });
       setIsListening(false);
 
-      console.log("녹음된 blob:", blob);
-
       const text = await playSTT(blob);
-      console.log("STT 결과:", text);
 
       if (text) {
         handleUserMessage(text);
@@ -57,7 +70,7 @@ const ConversationalOrder = () => {
           {
             id: Date.now(),
             sender: "bot",
-            text: "음성을 인식하지 못했어요. 조금 더 또렷하게 말씀해 주세요! ☺️",
+            text: "음성을 인식하지 못했어요. 다시 한 번 말씀해 주세요!",
           },
         ]);
       }
@@ -68,36 +81,16 @@ const ConversationalOrder = () => {
   };
 
   // =============================
-  // 2. 채팅 반영 + 주문 AI 응답
+  // 2. user → 채팅 추가 + WebSocket 전송
   // =============================
-  const handleUserMessage = async (msg: string) => {
+  const handleUserMessage = (msg: string) => {
     setMessages((prev) => [
       ...prev,
-      { id: Date.now(), text: msg, sender: "user" },
+      { id: Date.now(), sender: "user", text: msg },
     ]);
 
-    const botReply = await requestOrderAI(msg);
-
-    setMessages((prev) => [
-      ...prev,
-      { id: Date.now() + 1, text: botReply, sender: "bot" },
-    ]);
-
-    playTTS(botReply);
-  };
-
-  // =============================
-  // 3. 주문 AI 서버 응답
-  // =============================
-  const requestOrderAI = async (text: string) => {
-    const res = await fetch("나중에 axio로 api 반영 예정", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text }),
-    });
-
-    const data = await res.json();
-    return data.reply;
+    // 🔥 WebSocket으로 대화 요청
+    sendConverse(msg);
   };
 
   return (
@@ -107,9 +100,7 @@ const ConversationalOrder = () => {
         {/* 테스트 버튼 영역 */}
         <div className="mb-[2vh] flex gap-[2vw]">
           <button
-            onClick={() => {
-              playTTS("안녕하세요. TTS가 정상적으로 작동합니다.");
-            }}
+            onClick={() => playTTS("안녕하세요. TTS가 정상적으로 작동합니다.")}
             className="rounded-xl bg-green-500 px-4 py-2 text-[3vw] text-white"
           >
             TTS 테스트
@@ -117,10 +108,7 @@ const ConversationalOrder = () => {
 
           <button
             onClick={async () => {
-              // STT는 Blob이 필요하므로 샘플 blob 생성
               const sampleBlob = new Blob(["TEST"], { type: "audio/webm" });
-              console.log("STT TEST blob:", sampleBlob);
-
               const text = await playSTT(sampleBlob);
               console.log("STT TEST 결과:", text);
             }}
@@ -143,7 +131,9 @@ const ConversationalOrder = () => {
           {messages.map((m) => (
             <div
               key={m.id}
-              className={`mb-[2vh] flex ${m.sender === "user" ? "justify-end" : "justify-start"}`}
+              className={`mb-[2vh] flex ${
+                m.sender === "user" ? "justify-end" : "justify-start"
+              }`}
             >
               <div
                 className={`max-w-[70%] rounded-2xl px-[4vw] py-[2vh] text-[4vw] leading-snug shadow-sm ${
@@ -169,7 +159,7 @@ const ConversationalOrder = () => {
 
           <button
             onClick={() => handleUserMessage("라떼 하나요")}
-            className="rounded-xl border border-(--border-light) bg-white px-[5vw] py-[2vh] text-[4vw] text-(--text-primary) shadow-sm active:scale-95"
+            className="rounded-xl border border-(--border-light) bg-white px-[5vw] py-[2vh] text-(--text-primary) shadow-sm active:scale-95"
           >
             🥤 라떼 추천
           </button>
