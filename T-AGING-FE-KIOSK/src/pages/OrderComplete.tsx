@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
+import masil from "@/assets/images/masil.png";
 
 const OrderComplete = () => {
   const navigate = useNavigate();
@@ -15,11 +16,7 @@ const OrderComplete = () => {
       <div className="flex flex-1 flex-col items-center overflow-y-auto px-[4vw] pt-[8vh]">
         {/* 상단 마실이 + 말풍선 */}
         <div className="mb-[6vh] flex items-center gap-[3vw]">
-          <img
-            src="src/assets/images/masil.png"
-            alt="masil"
-            className="h-auto w-[20vw]"
-          />
+          <img src={masil} alt="masil" className="h-auto w-[20vw]" />
           <div className="rounded-2xl border border-(--border-light) bg-white px-[6vw] py-[2vh] text-[4vw] text-(--text-primary) shadow-md">
             주문이 접수되었어요!
           </div>
