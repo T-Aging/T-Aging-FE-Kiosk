@@ -6,6 +6,7 @@ export const useSTT = () => {
       const formData = new FormData();
       formData.append("file", blob, "voice.webm");
       formData.append("model", "gpt-4o-transcribe"); 
+      formData.append("language", "ko");
 
       const res = await axios.post(
         "https://api.openai.com/v1/audio/transcriptions",
