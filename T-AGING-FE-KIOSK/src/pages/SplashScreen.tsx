@@ -1,16 +1,19 @@
 import { useEffect } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import masil from "@/assets/images/masil.png";
+import { useKioskStore } from "@/store/useWebSocketStore";
 
 const SplashScreen = () => {
   const navigate = useNavigate();
   const { setTitle } = useOutletContext<{ setTitle: (v: string) => void }>();
+  const connect = useKioskStore((s) => s.connect);
 
   useEffect(() => {
     setTitle("마실이 키오스크");
   }, [setTitle]);
 
   const handleStart = () => {
+    connect(); // 웹소켓 연결
     navigate("/membership");
   };
 
