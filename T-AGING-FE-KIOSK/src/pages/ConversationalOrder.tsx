@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import masil from "@/assets/images/masil.png";
 import micIcon from "@/assets/images/conversational_order_mic_icon.png";
@@ -18,8 +18,6 @@ const ConversationalOrder = () => {
 
   const { playTTS } = useTTS();
   const { playSTT } = useSTT();
-
-  // 🔥 WebSocket 기반 대화용
   const { sendConverse, lastReply } = useKioskStore();
 
   const [messages, setMessages] = useState<Message[]>([
@@ -28,11 +26,14 @@ const ConversationalOrder = () => {
 
   const [isListening, setIsListening] = useState(false);
 
+  // 자동 스크롤 ref
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+
   useEffect(() => {
     setTitle("대화 주문");
   }, [setTitle]);
 
-  // 🔥 서버 reply 수신하면 즉시 채팅에 반영하는 부분
+  // 서버 응답 오면 추가
   useEffect(() => {
     if (!lastReply) return;
 
@@ -44,9 +45,12 @@ const ConversationalOrder = () => {
     playTTS(lastReply);
   }, [lastReply, playTTS]);
 
-  // =============================
-  // 1. 음성 녹음 → STT → userMessage 처리
-  // =============================
+  // 메시지가 추가될 때마다 자동 스크롤
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  // 음성 녹음 후 STT로 텍스트 받아오기
   const startRecording = async () => {
     setIsListening(true);
 
@@ -57,9 +61,9 @@ const ConversationalOrder = () => {
     recorder.ondataavailable = (e) => chunks.push(e.data);
 
     recorder.onstop = async () => {
-      const blob = new Blob(chunks, { type: "audio/webm" });
       setIsListening(false);
 
+      const blob = new Blob(chunks, { type: "audio/webm" });
       const text = await playSTT(blob);
 
       if (text) {
@@ -70,7 +74,7 @@ const ConversationalOrder = () => {
           {
             id: Date.now(),
             sender: "bot",
-            text: "음성을 인식하지 못했어요. 다시 한 번 말씀해 주세요!",
+            text: "음성을 인식하지 못했습니다. 다시 말씀해주세요.",
           },
         ]);
       }
@@ -80,49 +84,25 @@ const ConversationalOrder = () => {
     setTimeout(() => recorder.stop(), 3000);
   };
 
-  // =============================
-  // 2. user → 채팅 추가 + WebSocket 전송
-  // =============================
+  // 유저 메시지 추가 → 서버로 전송
   const handleUserMessage = (msg: string) => {
     setMessages((prev) => [
       ...prev,
       { id: Date.now(), sender: "user", text: msg },
     ]);
 
-    // 🔥 WebSocket으로 대화 요청
     sendConverse(msg);
   };
 
   return (
-    <div className="flex h-full w-full flex-col bg-(--bg-primary)">
+    <div className="relative flex h-full w-full flex-col bg-(--bg-primary)">
       {/* CONTENT */}
       <div className="flex flex-1 flex-col items-center overflow-hidden px-[4vw] pt-[6vh]">
-        {/* 테스트 버튼 영역 */}
-        <div className="mb-[2vh] flex gap-[2vw]">
-          <button
-            onClick={() => playTTS("안녕하세요. TTS가 정상적으로 작동합니다.")}
-            className="rounded-xl bg-green-500 px-4 py-2 text-[3vw] text-white"
-          >
-            TTS 테스트
-          </button>
-
-          <button
-            onClick={async () => {
-              const sampleBlob = new Blob(["TEST"], { type: "audio/webm" });
-              const text = await playSTT(sampleBlob);
-              console.log("STT TEST 결과:", text);
-            }}
-            className="rounded-xl bg-blue-500 px-4 py-2 text-[3vw] text-white"
-          >
-            STT 테스트
-          </button>
-        </div>
-
-        {/* 마실 + 말풍선 */}
+        {/* 캐릭터 + 말풍선 */}
         <div className="mb-[4vh] flex items-center gap-[3vw]">
           <img src={masil} alt="masil" className="h-auto w-[22vw]" />
           <div className="rounded-2xl border border-(--border-light) bg-white px-[5vw] py-[2vh] text-[4vw] text-(--text-primary) shadow-md">
-            주문을 말씀해주세요!
+            주문을 말씀해주세요.
           </div>
         </div>
 
@@ -146,6 +126,9 @@ const ConversationalOrder = () => {
               </div>
             </div>
           ))}
+
+          {/* 자동 스크롤 기준점 */}
+          <div ref={bottomRef} />
         </div>
 
         {/* 추천 버튼 */}
@@ -154,14 +137,14 @@ const ConversationalOrder = () => {
             onClick={() => handleUserMessage("아메리카노 한 잔 주세요")}
             className="rounded-xl border border-(--border-light) bg-white px-[5vw] py-[2vh] text-[4vw] text-(--text-primary) shadow-sm active:scale-95"
           >
-            ☕ 아메리카노 추천
+            아메리카노 추천
           </button>
 
           <button
             onClick={() => handleUserMessage("라떼 하나요")}
             className="rounded-xl border border-(--border-light) bg-white px-[5vw] py-[2vh] text-(--text-primary) shadow-sm active:scale-95"
           >
-            🥤 라떼 추천
+            라떼 추천
           </button>
         </div>
 
@@ -175,32 +158,28 @@ const ConversationalOrder = () => {
 
         {isListening && (
           <p className="mt-[2vh] text-[3vw] text-(--text-secondary)">
-            🎤 듣고 있어요...
+            듣고 있습니다...
           </p>
         )}
       </div>
 
       {/* FOOTER */}
-      <div className="flex h-[10vh] w-full items-center border-t border-(--border-light) bg-white px-[4vw]">
-        <div className="flex w-full items-center gap-[3vw]">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center justify-center rounded-xl border border-(--border-light) bg-(--color-primary) px-[4vw] py-[2vh] text-[5vw] text-(--text-inverse) shadow-sm"
-          >
-            ← 이전
-          </button>
+      <div className="flex h-[10vh] w-full items-center justify-between border-t border-(--border-light) bg-white px-[6vw]">
+        <button
+          onClick={() => navigate(-1)}
+          className="text-[5vw] text-(--text-primary)"
+        >
+          ← 이전
+        </button>
 
-          <div
-            onClick={() => navigate("/order/confirmation")}
-            className="flex flex-1 items-center justify-center rounded-xl py-[2vh] text-[5vw] active:scale-95"
-          >
-            주문 확인하기
-          </div>
-
-          <button className="flex items-center justify-center rounded-xl bg-(--accent) px-[4vw] py-[2vh] text-[5vw] text-(--text-inverse) shadow-sm">
-            직원 호출
-          </button>
+        <div
+          onClick={() => navigate("/order/confirmation")}
+          className="text-[5vw] text-(--text-primary)"
+        >
+          주문 확인하기
         </div>
+
+        <button className="text-[5vw] text-(--text-primary)">직원 호출</button>
       </div>
     </div>
   );
