@@ -56,13 +56,18 @@ export interface ConverseItem {
 
 // converse 응답
 export interface ConverseResponse {
-  type: "converse";
+  type: "converse"; 
+  storedId: string;
+  menuVersion: number;
+  sessionId: string;
   userText: string;
   reply: string;
-  intent: string;
-  reason: string;
+  intent: string | null;
+  reason: string | null;
   items?: ConverseItem[];
 }
+
+
 
 // order_start 응답
 export interface OrderStartResponse {

@@ -95,119 +95,148 @@ export const useKioskStore = create<KioskState>((set, get) => ({
     };
 
     ws.onmessage = (event) => {
-      const msg: KioskResponse = JSON.parse(event.data);
-      console.log("WS Response:", msg);
+  const msg = JSON.parse(event.data);
+  console.log("WS Response:", msg);
 
-      switch (msg.type) {
-        case "start":
-          set({ sessionId: msg.sessionId });
-          break;
+  // reply가 존재하는 경우 type 없이 온 converse 응답 처리
+  if (
+    typeof msg === "object" &&
+    msg !== null &&
+    "reply" in msg &&
+    typeof msg.reply === "string"
+  ) {
+    set({
+      lastReply: {
+        type: "converse",
+        storedId: msg.storedId,
+        menuVersion: msg.menuVersion,
+        sessionId: msg.sessionId,
+        userText: msg.userText,
+        reply: msg.reply,
+        intent: msg.intent ?? null,
+        reason: msg.reason ?? null,
+        items: msg.items ?? []
+      },
+      isVoiceStage: false
+    });
+    return;
+  }
 
-        // 대화 응답(converse)
-        case "converse":
-          set({
-            lastReply: msg as ConverseResponse,
-            isVoiceStage: false, 
-          });
-          break;
+  // type이 없고 sessionId만 있는 경우 start 응답 처리
+  if (
+    typeof msg === "object" &&
+    msg !== null &&
+    "sessionId" in msg &&
+    !("type" in msg)
+  ) {
+    set({ sessionId: msg.sessionId });
+    return;
+  }
 
-        // 주문 시작
-        case "order_start":
-          set({
-            currentStep: "order_start",
-            isVoiceStage: true, 
-          });
-          break;
+  const typedMsg = msg as KioskResponse;
 
-        // 온도
-        case "ask_temperature": {
-          const res = msg as AskTemperatureResponse;
-          set({
-            currentStep: "ask_temperature",
-            currentQuestion: res.question,
-            choices: res.choices,
-            menuName: res.menuName,
-          });
-          break;
-        }
+  switch (typedMsg.type) {
+    case "start":
+      set({ sessionId: typedMsg.sessionId });
+      break;
 
-        // 사이즈
-        case "ask_size": {
-          const res = msg as AskSizeResponse;
-          set({
-            currentStep: "ask_size",
-            currentQuestion: res.question,
-            choices: res.choices,
-            temperature: res.temperature,
-            menuName: res.menuName,
-          });
-          break;
-        }
+    // 대화 응답(converse)
+    case "converse":
+      set({
+        lastReply: { ...(typedMsg as ConverseResponse) },
+        isVoiceStage: false
+      });
+      break;
 
-        // 옵션 여부
-        case "ask_detail_option_y": {
-          const res = msg as AskDetailOptionYnResponse;
-          set({
-            currentStep: "detail_option_y",
-            currentQuestion: res.question,
-            choices: res.choices,
-            menuName: res.menuName,
-          });
-          break;
-        }
+    case "order_start":
+      set({
+        currentStep: "order_start",
+        isVoiceStage: true
+      });
+      break;
 
-        // 옵션 목록
-        case "show_detail_options": {
-          const res = msg as ShowDetailOptionsResponse;
-          set({
-            currentStep: "detail_options",
-            optionGroups: res.optionGroups,
-          });
-          break;
-        }
+    case "ask_temperature": {
+      const res = typedMsg as AskTemperatureResponse;
+      set({
+        currentStep: "ask_temperature",
+        currentQuestion: res.question,
+        choices: res.choices,
+        menuName: res.menuName
+      });
+      break;
+    }
 
-        // 주문 항목 완료
-        case "order_item_complete": {
-          const res = msg as OrderItemCompleteResponse;
-          set({
-            currentStep: "order_item_complete",
-            orderCompleteMessage: res.message,
-          });
-          break;
-        }
+    case "ask_size": {
+      const res = typedMsg as AskSizeResponse;
+      set({
+        currentStep: "ask_size",
+        currentQuestion: res.question,
+        choices: res.choices,
+        temperature: res.temperature,
+        menuName: res.menuName
+      });
+      break;
+    }
 
-        // 장바구니 조회
-        case "cart": {
-          const res = msg as CartResponse;
-          set({
-            cart: res.items,
-            totalPrice: res.totalPrice,
-          });
-          break;
-        }
+    case "ask_detail_option_y": {
+      const res = typedMsg as AskDetailOptionYnResponse;
+      set({
+        currentStep: "detail_option_y",
+        currentQuestion: res.question,
+        choices: res.choices,
+        menuName: res.menuName
+      });
+      break;
+    }
 
-        // 장바구니 갱신
-        case "cart_updated": {
-          const res = msg as CartUpdatedResponse;
-          set({
-            cart: res.items,
-            totalPrice: res.totalPrice,
-          });
-          break;
-        }
+    case "show_detail_options": {
+      const res = typedMsg as ShowDetailOptionsResponse;
+      set({
+        currentStep: "detail_options",
+        optionGroups: res.optionGroups
+      });
+      break;
+    }
 
-        // 주문 확정
-        case "order_confirm": {
-          const res = msg as OrderConfirmResponse;
-          set({
-            currentStep: "order_confirm",
-            cart: res.items,
-            totalPrice: res.totalPrice,
-          });
-          break;
-        }
-      }
-    };
+    case "order_item_complete": {
+      const res = typedMsg as OrderItemCompleteResponse;
+      set({
+        currentStep: "order_item_complete",
+        orderCompleteMessage: res.message
+      });
+      break;
+    }
+
+    case "cart": {
+      const res = typedMsg as CartResponse;
+      set({
+        cart: res.items,
+        totalPrice: res.totalPrice
+      });
+      break;
+    }
+
+    case "cart_updated": {
+      const res = typedMsg as CartUpdatedResponse;
+      set({
+        cart: res.items,
+        totalPrice: res.totalPrice
+      });
+      break;
+    }
+
+    case "order_confirm": {
+      const res = typedMsg as OrderConfirmResponse;
+      set({
+        currentStep: "order_confirm",
+        cart: res.items,
+        totalPrice: res.totalPrice
+      });
+      break;
+    }
+  }
+};
+
 
     ws.onclose = () => {
       console.warn("WebSocket 종료 → 재연결 시도");
