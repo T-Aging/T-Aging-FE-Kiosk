@@ -5,6 +5,7 @@ import micIcon from "@/assets/images/conversational_order_mic_icon.png";
 import { useTTS } from "@/hooks/useTTS";
 import { useSTT } from "@/hooks/useSTT";
 import { useKioskStore } from "@/store/useWebSocketStore";
+import type { ConverseItem, ConverseResponse } from "@/types/KioskResponse";
 
 type Message = {
   id: number;
@@ -18,39 +19,52 @@ const ConversationalOrder = () => {
 
   const { playTTS } = useTTS();
   const { playSTT } = useSTT();
-  const { sendConverse, lastReply } = useKioskStore();
+  const { sendConverse, lastReply, isVoiceStage } = useKioskStore();
 
   const [messages, setMessages] = useState<Message[]>([
     { id: 1, text: "무엇을 도와드릴까요? 주문을 말씀해주세요!", sender: "bot" },
   ]);
 
+  // 추천 메뉴 아이템 상태
+  const [recommendedItems, setRecommendedItems] = useState<ConverseItem[]>([]);
+
   const [isListening, setIsListening] = useState(false);
 
-  // 자동 스크롤 ref
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setTitle("대화 주문");
   }, [setTitle]);
 
-  // 서버 응답 오면 추가
+  // 서버의 converse 응답 처리
   useEffect(() => {
     if (!lastReply) return;
 
+    const res = lastReply as ConverseResponse;
+
+    // reply → 채팅 메시지 추가
     setMessages((prev) => [
       ...prev,
-      { id: Date.now(), sender: "bot", text: lastReply },
+      { id: Date.now(), sender: "bot", text: res.reply },
     ]);
 
-    playTTS(lastReply);
+    // 음성 출력
+    playTTS(res.reply);
+
+    // 추천 메뉴 카드 업데이트
+    if (res.items && res.items.length > 0) {
+      setRecommendedItems(res.items);
+    } else {
+      setRecommendedItems([]);
+    }
   }, [lastReply, playTTS]);
 
-  // 메시지가 추가될 때마다 자동 스크롤
+  // 메시지 자동 스크롤
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // 음성 녹음 후 STT로 텍스트 받아오기
+  // 음성 녹음
   const startRecording = async () => {
     setIsListening(true);
 
@@ -84,7 +98,7 @@ const ConversationalOrder = () => {
     setTimeout(() => recorder.stop(), 3000);
   };
 
-  // 유저 메시지 추가 → 서버로 전송
+  // 유저 입력 처리
   const handleUserMessage = (msg: string) => {
     setMessages((prev) => [
       ...prev,
@@ -92,21 +106,22 @@ const ConversationalOrder = () => {
     ]);
 
     sendConverse(msg);
+
+    // 새 유저 입력 들어오면 이전 추천 초기화
+    setRecommendedItems([]);
   };
 
   return (
     <div className="relative flex h-full w-full flex-col bg-(--bg-primary)">
-      {/* CONTENT */}
       <div className="flex flex-1 flex-col items-center overflow-hidden px-[4vw] pt-[6vh]">
-        {/* 캐릭터 + 말풍선 */}
+        {/* 캐릭터 말풍선 */}
         <div className="mb-[4vh] flex items-center gap-[3vw]">
           <img src={masil} alt="masil" className="h-auto w-[22vw]" />
           <div className="rounded-2xl border border-(--border-light) bg-white px-[5vw] py-[2vh] text-[4vw] text-(--text-primary) shadow-md">
             주문을 말씀해주세요.
           </div>
         </div>
-
-        {/* 메시지 목록 */}
+        {/* 메시지 리스트 */}
         <div className="w-full flex-1 overflow-y-auto px-[1vw] pb-[2vh]">
           {messages.map((m) => (
             <div
@@ -127,43 +142,60 @@ const ConversationalOrder = () => {
             </div>
           ))}
 
-          {/* 자동 스크롤 기준점 */}
           <div ref={bottomRef} />
         </div>
+        {/* 추천 메뉴 카드 */}
+        {recommendedItems.length > 0 && (
+          <div className="mt-[3vh] w-full px-[2vw]">
+            <p className="mb-[2vh] text-center text-[4vw] font-semibold text-(--text-primary)">
+              아래에서 메뉴를 선택해보세요!
+            </p>
 
-        {/* 추천 버튼 */}
-        <div className="mt-[2vh] flex w-full justify-center gap-[3vw]">
-          <button
-            onClick={() => handleUserMessage("아메리카노 한 잔 주세요")}
-            className="rounded-xl border border-(--border-light) bg-white px-[5vw] py-[2vh] text-[4vw] text-(--text-primary) shadow-sm active:scale-95"
-          >
-            아메리카노 추천
-          </button>
+            <div className="grid w-full grid-cols-2 gap-[3vw]">
+              {recommendedItems.map((item, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => handleUserMessage(`${item.name} 주세요`)}
+                  className="flex flex-col rounded-2xl border border-(--border-light) bg-white p-[2vw] shadow-md active:scale-95"
+                >
+                  <img
+                    src={item.menu_image}
+                    alt={item.name}
+                    className="mb-[2vh] h-[22vw] w-full rounded-xl object-cover"
+                  />
 
-          <button
-            onClick={() => handleUserMessage("라떼 하나요")}
-            className="rounded-xl border border-(--border-light) bg-white px-[5vw] py-[2vh] text-(--text-primary) shadow-sm active:scale-95"
-          >
-            라떼 추천
-          </button>
-        </div>
+                  <p className="text-[4vw] font-semibold text-(--text-primary)">
+                    {item.name}
+                  </p>
 
-        {/* 마이크 버튼 */}
-        <button
-          onClick={startRecording}
-          className="mt-[4vh] flex h-[20vw] w-[20vw] items-center justify-center rounded-full bg-(--color-primary) shadow-lg active:scale-95"
-        >
-          <img src={micIcon} alt="mic" className="w-[10vw]" />
-        </button>
+                  <p className="text-[3.5vw] text-(--text-secondary)">
+                    {item.price.toLocaleString()}원
+                  </p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {/* 마이크 */}
+        {isVoiceStage && (
+          <>
+            <button
+              onClick={startRecording}
+              className="mt-[4vh] flex h-[20vw] w-[20vw] items-center justify-center rounded-full bg-(--color-primary) shadow-lg active:scale-95"
+            >
+              <img src={micIcon} alt="mic" className="w-[10vw]" />
+            </button>
 
-        {isListening && (
-          <p className="mt-[2vh] text-[3vw] text-(--text-secondary)">
-            듣고 있습니다...
-          </p>
+            {isListening && (
+              <p className="mt-[2vh] text-[3vw] text-(--text-secondary)">
+                듣고 있습니다...
+              </p>
+            )}
+          </>
         )}
       </div>
 
-      {/* FOOTER */}
+      {/* Footer */}
       <div className="flex h-[10vh] w-full items-center justify-between border-t border-(--border-light) bg-white px-[6vw]">
         <button
           onClick={() => navigate(-1)}
