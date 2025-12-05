@@ -15,6 +15,14 @@ export interface ConverseRequest {
   };
 }
 
+// 메뉴 선택 시작 요청
+export interface OrderStartRequest {
+  type: "order_start";
+  data: {
+    menuName: string;
+  };
+}
+
 // 온도 선택 요청
 export interface SelectTemperatureRequest {
   type: "select_temperature";
@@ -71,6 +79,7 @@ export interface OrderConfirmRequest {
 export type KioskRequest =
   | StartRequest
   | ConverseRequest
+  | OrderStartRequest
   | SelectTemperatureRequest
   | SelectSizeRequest
   | DetailOptionYnRequest
