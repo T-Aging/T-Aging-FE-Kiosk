@@ -247,7 +247,6 @@ const ConversationalOrder = () => {
     }
 
     // 장바구니 표시
-    // 장바구니 표시 (전체 주문 내역 + 더 주문하기 / 주문 완료)
     if (currentStep === "cart") {
       const { cart, totalPrice } = useKioskStore.getState();
 
@@ -257,8 +256,18 @@ const ConversationalOrder = () => {
           {cart.map((item) => (
             <div
               key={item.orderDetailId}
-              className="mb-[2vh] rounded-xl border bg-white p-[3vw]"
+              className="relative mb-[2vh] rounded-xl border bg-white p-[3vw]"
             >
+              {/* 삭제 버튼 */}
+              <button
+                onClick={() =>
+                  useKioskStore.getState().deleteCartItem(item.orderDetailId)
+                }
+                className="absolute top-[2vw] right-[2vw] text-[3.5vw] text-red-500"
+              >
+                삭제
+              </button>
+
               <p className="text-[4vw] font-semibold">{item.menuName}</p>
               <p className="text-[3.5vw]">
                 {item.temperature} / {item.size}
@@ -272,6 +281,11 @@ const ConversationalOrder = () => {
                   + {opt.optionValueName} ({opt.extraPrice}원)
                 </p>
               ))}
+
+              {/* 상품 금액 */}
+              <p className="mt-[1vh] text-[4vw] font-semibold">
+                {item.lineTotalPrice.toLocaleString()}원
+              </p>
             </div>
           ))}
 
@@ -282,11 +296,9 @@ const ConversationalOrder = () => {
 
           {/* 버튼 그룹 */}
           <div className="mt-[3vh] flex gap-[3vw]">
-            {/* 더 주문 */}
             <button
               className="flex-1 rounded-xl bg-green-600 px-[4vw] py-[2vh] text-[4vw] text-white shadow-md active:scale-95"
               onClick={() => {
-                // 상태 초기화 후 다시 음성 입력으로
                 useKioskStore.setState({
                   currentStep: null,
                   currentQuestion: null,
@@ -299,7 +311,6 @@ const ConversationalOrder = () => {
               더 주문할게요
             </button>
 
-            {/* 주문 완료 */}
             <button
               className="flex-1 rounded-xl bg-blue-600 px-[4vw] py-[2vh] text-[4vw] text-white shadow-md active:scale-95"
               onClick={() => navigate("/order/confirmation")}
