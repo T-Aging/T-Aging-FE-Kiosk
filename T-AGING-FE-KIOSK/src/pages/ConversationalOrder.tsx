@@ -5,11 +5,7 @@ import micIcon from "@/assets/images/conversational_order_mic_icon.png";
 import { useTTS } from "@/hooks/useTTS";
 import { useSTT } from "@/hooks/useSTT";
 import { useKioskStore } from "@/store/useWebSocketStore";
-import type {
-  ConverseItem,
-  ConverseResponse,
-  OptionGroup,
-} from "@/types/KioskResponse";
+import type { ConverseItem, ConverseResponse } from "@/types/KioskResponse";
 
 type Message = {
   id: number;
@@ -36,15 +32,15 @@ const ConversationalOrder = () => {
     selectTemperature,
     selectSize,
     selectDetailOptionYn,
-    selectDetailOptions,
   } = useKioskStore();
+
+  const { currentOptionGroupIndex, nextOptionGroup } = useKioskStore.getState();
 
   const [messages, setMessages] = useState<Message[]>([
     { id: 1, text: "무엇을 도와드릴까요? 주문을 말씀해주세요!", sender: "bot" },
   ]);
 
   const [recommendedItems, setRecommendedItems] = useState<ConverseItem[]>([]);
-  const [selectedOptions, setSelectedOptions] = useState<number[]>([]);
   const [isListening, setIsListening] = useState<boolean>(false);
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -136,10 +132,30 @@ const ConversationalOrder = () => {
     setRecommendedItems([]);
   };
 
+  // 주문 완료 후 추가 주문 초기화 함수
+  const resetForNewOrder = () => {
+    setMessages([
+      {
+        id: 1,
+        text: "무엇을 도와드릴까요? 주문을 말씀해주세요!",
+        sender: "bot",
+      },
+    ]);
+
+    useKioskStore.setState({
+      currentStep: null,
+      currentQuestion: null,
+      choices: null,
+      optionGroups: null,
+      isVoiceStage: true,
+    });
+  };
+
   // BottomSheet 렌더링
   const renderBottomSheet = () => {
     if (!currentStep) return null;
 
+    // 온도 선택
     if (currentStep === "ask_temperature") {
       return (
         <BottomSheet title={currentQuestion ?? ""}>
@@ -154,6 +170,7 @@ const ConversationalOrder = () => {
       );
     }
 
+    // 사이즈 선택
     if (currentStep === "ask_size") {
       return (
         <BottomSheet title={currentQuestion ?? ""}>
@@ -164,7 +181,8 @@ const ConversationalOrder = () => {
       );
     }
 
-    if (currentStep === "detail_option_y") {
+    // 옵션 여부 질문
+    if (currentStep === "ask_detail_option_yn") {
       return (
         <BottomSheet title={currentQuestion ?? ""}>
           {choices?.map((c: string) => (
@@ -178,41 +196,117 @@ const ConversationalOrder = () => {
       );
     }
 
-    if (currentStep === "detail_options") {
+    // 옵션 상세 선택 (순차 진행)
+    if (currentStep === "show_detail_options") {
+      // 현재 옵션 그룹
+      const group = optionGroups?.[currentOptionGroupIndex];
+      if (!group) return null;
+
       return (
-        <BottomSheet title="옵션을 선택하세요">
-          {optionGroups?.map((group: OptionGroup) => (
-            <div key={group.groupName} className="mb-[3vh]">
-              <p className="mb-[1vh] text-[4vw] font-semibold">
-                {group.groupName}
+        <BottomSheet title={`옵션 선택: ${group.groupName}`}>
+          {group.options.map((opt) => (
+            <button
+              key={opt.id}
+              onClick={() => nextOptionGroup(opt.id)}
+              className="mb-[1vh] w-full rounded-xl border bg-white px-[3vw] py-[2vh] text-left"
+            >
+              {opt.name} (+{opt.extraPrice}원)
+            </button>
+          ))}
+
+          <ChoiceButton
+            label="선택 안함"
+            onClick={() => nextOptionGroup(null)}
+          />
+
+          <p className="mt-[2vh] text-center text-[3.2vw] text-(--text-secondary)">
+            {currentOptionGroupIndex + 1} / {optionGroups?.length} 단계
+          </p>
+        </BottomSheet>
+      );
+    }
+
+    // 주문 완료 표시
+    if (currentStep === "order_item_complete") {
+      return (
+        <BottomSheet title="주문이 담겼습니다">
+          <p className="mb-[3vh] text-[4vw] font-semibold">
+            {useKioskStore.getState().orderCompleteMessage}
+          </p>
+
+          <ChoiceButton
+            label="장바구니 보기"
+            onClick={() => {
+              useKioskStore.getState().getCart();
+            }}
+          />
+
+          <ChoiceButton label="추가 주문하기" onClick={resetForNewOrder} />
+        </BottomSheet>
+      );
+    }
+
+    // 장바구니 표시
+    // 장바구니 표시 (전체 주문 내역 + 더 주문하기 / 주문 완료)
+    if (currentStep === "cart") {
+      const { cart, totalPrice } = useKioskStore.getState();
+
+      return (
+        <BottomSheet title="현재 주문 내역">
+          {/* 장바구니 전체 출력 */}
+          {cart.map((item) => (
+            <div
+              key={item.orderDetailId}
+              className="mb-[2vh] rounded-xl border bg-white p-[3vw]"
+            >
+              <p className="text-[4vw] font-semibold">{item.menuName}</p>
+              <p className="text-[3.5vw]">
+                {item.temperature} / {item.size}
               </p>
 
-              {group.options.map((opt) => (
-                <button
-                  key={opt.id}
-                  onClick={() => {
-                    setSelectedOptions((prev) =>
-                      prev.includes(opt.id)
-                        ? prev.filter((v) => v !== opt.id)
-                        : [...prev, opt.id],
-                    );
-                  }}
-                  className={`mb-[1vh] w-full rounded-xl border px-[3vw] py-[2vh] text-left ${
-                    selectedOptions.includes(opt.id)
-                      ? "bg-(--color-primary) text-white"
-                      : "border-(--border-light) bg-white"
-                  }`}
+              {item.options.map((opt) => (
+                <p
+                  key={opt.optionValueId}
+                  className="text-[3vw] text-(--text-secondary)"
                 >
-                  {opt.name} (+{opt.extraPrice}원)
-                </button>
+                  + {opt.optionValueName} ({opt.extraPrice}원)
+                </p>
               ))}
             </div>
           ))}
 
-          <ChoiceButton
-            label="선택 완료"
-            onClick={() => selectDetailOptions(selectedOptions)}
-          />
+          {/* 총 금액 */}
+          <p className="mt-[1vh] text-[4.5vw] font-bold">
+            총 금액: {totalPrice}원
+          </p>
+
+          {/* 버튼 그룹 */}
+          <div className="mt-[3vh] flex gap-[3vw]">
+            {/* 더 주문 */}
+            <button
+              className="flex-1 rounded-xl bg-green-600 px-[4vw] py-[2vh] text-[4vw] text-white shadow-md active:scale-95"
+              onClick={() => {
+                // 상태 초기화 후 다시 음성 입력으로
+                useKioskStore.setState({
+                  currentStep: null,
+                  currentQuestion: null,
+                  choices: null,
+                  optionGroups: null,
+                  isVoiceStage: true,
+                });
+              }}
+            >
+              더 주문할게요
+            </button>
+
+            {/* 주문 완료 */}
+            <button
+              className="flex-1 rounded-xl bg-blue-600 px-[4vw] py-[2vh] text-[4vw] text-white shadow-md active:scale-95"
+              onClick={() => navigate("/order/confirmation")}
+            >
+              주문 완료
+            </button>
+          </div>
         </BottomSheet>
       );
     }

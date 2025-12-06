@@ -94,7 +94,7 @@ export interface AskSizeResponse {
 
 // 옵션 여부 질문
 export interface AskDetailOptionYnResponse {
-  type: "ask_detail_option_y";
+  type: "ask_detail_option_yn";
   menuName: string;
   temperature: string;
   size: string;

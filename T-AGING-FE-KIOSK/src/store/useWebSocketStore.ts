@@ -23,7 +23,7 @@ interface KioskState {
   lastReply: ConverseResponse | null;
 
   // 첫 단계 음성 입력 여부
-  isVoiceStage: boolean; 
+  isVoiceStage: boolean;
 
   // 주문 항목 담기 완료 메시지
   orderCompleteMessage: string | null;
@@ -37,7 +37,15 @@ interface KioskState {
   menuName: string | null;
   temperature: string | null;
   size: string | null;
+
+  // 옵션 그룹 전체
   optionGroups: OptionGroup[] | null;
+
+  // 옵션 그룹 순차 선택을 위한 인덱스
+  currentOptionGroupIndex: number;
+
+  // 선택한 옵션 ID 누적
+  selectedOptionIds: number[];
 
   // 장바구니 정보
   cart: CartItem[];
@@ -50,11 +58,13 @@ interface KioskState {
   selectTemperature: (temperature: string) => void;
   selectSize: (size: string) => void;
   selectDetailOptionYn: (answer: string) => void;
+
+  nextOptionGroup: (selectedOptionId: number | null) => void;
+
   selectDetailOptions: (selected: number[]) => void;
 
   getCart: () => void;
   deleteCartItem: (orderDetailId: number) => void;
-
   orderConfirm: () => void;
 }
 
@@ -64,7 +74,6 @@ export const useKioskStore = create<KioskState>((set, get) => ({
 
   lastReply: null,
 
-  // 🔥 음성 단계 처음엔 true
   isVoiceStage: true,
 
   orderCompleteMessage: null,
@@ -77,6 +86,9 @@ export const useKioskStore = create<KioskState>((set, get) => ({
   temperature: null,
   size: null,
   optionGroups: null,
+
+  currentOptionGroupIndex: 0,
+  selectedOptionIds: [],
 
   cart: [],
   totalPrice: null,
@@ -95,148 +107,152 @@ export const useKioskStore = create<KioskState>((set, get) => ({
     };
 
     ws.onmessage = (event) => {
-  const msg = JSON.parse(event.data);
-  console.log("WS Response:", msg);
+      const msg = JSON.parse(event.data);
+      console.log("WS Response:", msg);
 
-  // reply가 존재하는 경우 type 없이 온 converse 응답 처리
-  if (
-    typeof msg === "object" &&
-    msg !== null &&
-    "reply" in msg &&
-    typeof msg.reply === "string"
-  ) {
-    set({
-      lastReply: {
-        type: "converse",
-        storedId: msg.storedId,
-        menuVersion: msg.menuVersion,
-        sessionId: msg.sessionId,
-        userText: msg.userText,
-        reply: msg.reply,
-        intent: msg.intent ?? null,
-        reason: msg.reason ?? null,
-        items: msg.items ?? []
-      },
-      isVoiceStage: false
-    });
-    return;
-  }
+      if (
+        typeof msg === "object" &&
+        msg !== null &&
+        "reply" in msg &&
+        typeof msg.reply === "string"
+      ) {
+        set({
+          lastReply: {
+            type: "converse",
+            storedId: msg.storedId,
+            menuVersion: msg.menuVersion,
+            sessionId: msg.sessionId,
+            userText: msg.userText,
+            reply: msg.reply,
+            intent: msg.intent ?? null,
+            reason: msg.reason ?? null,
+            items: msg.items ?? [],
+          },
+          isVoiceStage: false,
+        });
+        return;
+      }
 
-  // type이 없고 sessionId만 있는 경우 start 응답 처리
-  if (
-    typeof msg === "object" &&
-    msg !== null &&
-    "sessionId" in msg &&
-    !("type" in msg)
-  ) {
-    set({ sessionId: msg.sessionId });
-    return;
-  }
+      if (
+        typeof msg === "object" &&
+        msg !== null &&
+        "sessionId" in msg &&
+        !("type" in msg)
+      ) {
+        set({ sessionId: msg.sessionId });
+        return;
+      }
 
-  const typedMsg = msg as KioskResponse;
+      const typedMsg = msg as KioskResponse;
 
-  switch (typedMsg.type) {
-    case "start":
-      set({ sessionId: typedMsg.sessionId });
-      break;
+      switch (typedMsg.type) {
+        case "start":
+          set({ sessionId: typedMsg.sessionId });
+          break;
 
-    // 대화 응답(converse)
-    case "converse":
-      set({
-        lastReply: { ...(typedMsg as ConverseResponse) },
-        isVoiceStage: false
-      });
-      break;
+        case "converse":
+          set({
+            lastReply: { ...(typedMsg as ConverseResponse) },
+            isVoiceStage: false,
+          });
+          break;
 
-    case "order_start":
-      set({
-        currentStep: "order_start",
-        isVoiceStage: true
-      });
-      break;
+        case "order_start":
+          set({
+            currentStep: "order_start",
+            isVoiceStage: true,
+          });
+          break;
 
-    case "ask_temperature": {
-      const res = typedMsg as AskTemperatureResponse;
-      set({
-        currentStep: "ask_temperature",
-        currentQuestion: res.question,
-        choices: res.choices,
-        menuName: res.menuName
-      });
-      break;
-    }
+        case "ask_temperature": {
+          const res = typedMsg as AskTemperatureResponse;
+          set({
+            currentStep: "ask_temperature",
+            currentQuestion: res.question,
+            choices: res.choices,
+            menuName: res.menuName,
+          });
+          break;
+        }
 
-    case "ask_size": {
-      const res = typedMsg as AskSizeResponse;
-      set({
-        currentStep: "ask_size",
-        currentQuestion: res.question,
-        choices: res.choices,
-        temperature: res.temperature,
-        menuName: res.menuName
-      });
-      break;
-    }
+        case "ask_size": {
+          const res = typedMsg as AskSizeResponse;
+          set({
+            currentStep: "ask_size",
+            currentQuestion: res.question,
+            choices: res.choices,
+            temperature: res.temperature,
+            menuName: res.menuName,
+          });
+          break;
+        }
 
-    case "ask_detail_option_y": {
-      const res = typedMsg as AskDetailOptionYnResponse;
-      set({
-        currentStep: "detail_option_y",
-        currentQuestion: res.question,
-        choices: res.choices,
-        menuName: res.menuName
-      });
-      break;
-    }
+        case "ask_detail_option_yn": {
+          const res = typedMsg as AskDetailOptionYnResponse;
+          set({
+            currentStep: "ask_detail_option_yn",
+            currentQuestion: res.question,
+            choices: res.choices,
+            menuName: res.menuName,
+            temperature: res.temperature,
+            size: res.size,
+          });
+          break;
+        }
 
-    case "show_detail_options": {
-      const res = typedMsg as ShowDetailOptionsResponse;
-      set({
-        currentStep: "detail_options",
-        optionGroups: res.optionGroups
-      });
-      break;
-    }
+        case "show_detail_options": {
+          const res = typedMsg as ShowDetailOptionsResponse;
+          set({
+            currentStep: "show_detail_options",
+            optionGroups: res.optionGroups,
+            currentOptionGroupIndex: 0,
+            selectedOptionIds: [],
+          });
+          break;
+        }
 
-    case "order_item_complete": {
-      const res = typedMsg as OrderItemCompleteResponse;
-      set({
-        currentStep: "order_item_complete",
-        orderCompleteMessage: res.message
-      });
-      break;
-    }
+        case "order_item_complete": {
+          const res = typedMsg as OrderItemCompleteResponse;
+          set({
+            currentStep: "order_item_complete",
+            orderCompleteMessage: res.message,
+          });
+          break;
+        }
 
-    case "cart": {
-      const res = typedMsg as CartResponse;
-      set({
-        cart: res.items,
-        totalPrice: res.totalPrice
-      });
-      break;
-    }
+        case "cart": {
+          const res = typedMsg as CartResponse;
+          set({
+            currentStep: "cart",
+            cart: res.items,
+            totalPrice: res.totalPrice,
+            isVoiceStage: false,
+          });
+          break;
+        }
 
-    case "cart_updated": {
-      const res = typedMsg as CartUpdatedResponse;
-      set({
-        cart: res.items,
-        totalPrice: res.totalPrice
-      });
-      break;
-    }
+        case "cart_updated": {
+          const res = typedMsg as CartUpdatedResponse;
+          set({
+            currentStep: "cart",
+            cart: res.items,
+            totalPrice: res.totalPrice,
+            isVoiceStage: false,
+          });
+          break;
+        }
 
-    case "order_confirm": {
-      const res = typedMsg as OrderConfirmResponse;
-      set({
-        currentStep: "order_confirm",
-        cart: res.items,
-        totalPrice: res.totalPrice
-      });
-      break;
-    }
-  }
-};
-
+        case "order_confirm": {
+          const res = typedMsg as OrderConfirmResponse;
+          set({
+            currentStep: "order_confirm",
+            cart: res.items,
+            totalPrice: res.totalPrice,
+          });
+          break;
+        }
+      }
+    };
 
     ws.onclose = () => {
       console.warn("WebSocket 종료 → 재연결 시도");
@@ -276,8 +292,44 @@ export const useKioskStore = create<KioskState>((set, get) => ({
 
   selectDetailOptionYn: (answer) => {
     get().sendMessage({
-      type: "detail_option_y",
+      type: "detail_option_yn",
       data: { answer },
+    });
+  },
+
+  nextOptionGroup: (selectedOptionId: number | null) => {
+    const state = get();
+
+    if (selectedOptionId !== null) {
+      set({
+        selectedOptionIds: [...state.selectedOptionIds, selectedOptionId],
+      });
+    }
+
+    const nextIndex = state.currentOptionGroupIndex + 1;
+    const total = state.optionGroups?.length ?? 0;
+
+    if (nextIndex >= total) {
+      get().sendMessage({
+        type: "select_detail_options",
+        data: { selectedOptionValueIds: get().selectedOptionIds },
+      });
+
+      get().sendMessage({
+        type: "get_cart",
+        data: null,
+      });
+
+      set({
+        currentOptionGroupIndex: 0,
+        selectedOptionIds: [],
+      });
+
+      return;
+    }
+
+    set({
+      currentOptionGroupIndex: nextIndex,
     });
   },
 

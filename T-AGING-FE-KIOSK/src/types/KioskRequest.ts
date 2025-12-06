@@ -41,7 +41,7 @@ export interface SelectSizeRequest {
 
 // 옵션 여부(Y/N) 요청
 export interface DetailOptionYnRequest {
-  type: "detail_option_y";
+  type: "detail_option_yn";
   data: {
     answer: string;
   };
