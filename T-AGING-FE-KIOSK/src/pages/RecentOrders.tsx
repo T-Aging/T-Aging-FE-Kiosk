@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import masil from "@/assets/images/masil.png";
+import { useTTS } from "@/hooks/useTTS";
 
 type OutletContextType = {
   setTitle: (v: string) => void;
@@ -45,7 +46,12 @@ const RecentOrders = () => {
   const navigate = useNavigate();
   const { setTitle } = useOutletContext<OutletContextType>();
 
-  // 상세보기 팝업
+  const { playTTS, stopTTS } = useTTS();
+
+  // TTS가 여러 번 재생되는 것을 막기 위해 사용
+  const spokenRef = useRef(false);
+
+  // 상세보기 팝업 상태
   const [showDetail, setShowDetail] = useState(false);
   const [detailOrder, setDetailOrder] = useState<RecentOrder | null>(null);
 
@@ -58,10 +64,24 @@ const RecentOrders = () => {
 
   useEffect(() => {
     setTitle("최근 주문");
-  }, [setTitle]);
 
-  // 주문 클릭 → 주문 완료 페이지로 바로 이동
+    // 진입 시 단 한 번만 음성 안내 재생
+    if (!spokenRef.current) {
+      spokenRef.current = true;
+      playTTS(
+        "최근 기록에서 선택하시면 바로 주문할 수 있습니다. 상세 보기로 내역을 확인할 수 있으며, 새로 주문하려면 아래 버튼을 선택해 주세요.",
+      );
+    }
+
+    // 화면을 떠날 때 남아 있는 음성을 중단
+    return () => {
+      stopTTS();
+    };
+  }, [setTitle, playTTS, stopTTS]);
+
+  // 최근 주문 항목을 선택하면 음성을 중단하고 다음 화면으로 이동
   const handleClickOrder = (order: RecentOrder) => {
+    stopTTS();
     navigate("/order/confirmation", {
       state: {
         type: "recent",
@@ -70,12 +90,24 @@ const RecentOrders = () => {
     });
   };
 
+  // 새로 주문하기 선택 시에도 음성 중단 후 이동
+  const handleNewOrder = () => {
+    stopTTS();
+    navigate("/order");
+  };
+
+  // 뒤로가기 선택 시 음성 중단 후 이동
+  const handleGoBack = () => {
+    stopTTS();
+    navigate(-1);
+  };
+
   return (
     <div className="flex h-full w-full flex-col bg-(--bg-primary)">
       {/* CONTENT */}
       <div className="flex flex-1 flex-col items-center overflow-y-auto px-[4vw] pt-[8vh]">
         <div className="w-full rounded-2xl border border-(--border-soft) bg-white px-[4vw] py-[3vh] shadow-md">
-          {/* 상단 안내 */}
+          {/* 상단 안내 영역 */}
           <div className="flex items-center">
             <img src={masil} alt="masil" className="mb-[1vh] h-auto w-[20vw]" />
             <div className="rounded-2xl border border-(--border-light) bg-white px-[5vw] py-[2vh] text-[5vw] text-(--text-primary) shadow-md">
@@ -88,7 +120,6 @@ const RecentOrders = () => {
             {recentOrdersMock.map((order) => {
               const firstItem = order.items[0];
               const extraCount = order.items.length - 1;
-
               const title =
                 extraCount > 0
                   ? `${firstItem.name} 외 ${extraCount}개`
@@ -112,7 +143,7 @@ const RecentOrders = () => {
                     {order.date}
                   </p>
 
-                  {/* 상세보기 */}
+                  {/* 상세보기 버튼 */}
                   <button
                     type="button"
                     onClick={(e) => {
@@ -128,10 +159,10 @@ const RecentOrders = () => {
             })}
           </div>
 
-          {/* 새로 주문하기 */}
+          {/* 새로 주문하기 버튼 */}
           <button
             type="button"
-            onClick={() => navigate("/order")}
+            onClick={handleNewOrder}
             className="mt-[1vh] w-full rounded-xl bg-(--color-primary) py-[2.4vh] text-[5vw] font-semibold text-(--text-inverse) shadow-md active:scale-95"
           >
             새로 주문하기
@@ -142,16 +173,14 @@ const RecentOrders = () => {
       {/* FOOTER */}
       <div className="flex h-[10vh] w-full items-center border-t border-(--border-light) bg-white px-[4vw]">
         <div className="flex w-full items-center justify-between">
-          {/* 이전 */}
           <button
             type="button"
-            onClick={() => navigate(-1)}
+            onClick={handleGoBack}
             className="flex items-center justify-center rounded-xl border border-(--border-light) bg-white px-[3vw] py-[1.8vh] text-[5vw] text-(--text-primary) shadow-sm"
           >
             ← 이전
           </button>
 
-          {/* 직원 호출 */}
           <button
             type="button"
             className="flex items-center justify-center rounded-xl bg-(--accent) px-[3vw] py-[1.8vh] text-[5vw] text-(--text-inverse) shadow-sm"

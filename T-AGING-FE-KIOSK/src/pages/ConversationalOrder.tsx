@@ -49,6 +49,33 @@ const ConversationalOrder = () => {
     setTitle("대화 주문");
   }, [setTitle]);
 
+  // =============================
+  // 선택 버튼을 눌렀을 때 채팅 메시지 추가 + bot follow-up + 기존 TTS 종료
+  // =============================
+  const handleChoiceSelect = async (label: string, callback: () => void) => {
+    // 사용자 메시지 추가
+    setMessages((prev) => [
+      ...prev,
+      { id: Date.now(), sender: "user", text: label },
+    ]);
+
+    // 현재 재생 중인 TTS 종료 (지원 시)
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+
+    // 기존 선택 로직 실행 (온도/사이즈/옵션 등)
+    callback();
+
+    // follow-up bot 메시지
+    const follow = "선택하셨어요!";
+
+    setMessages((prev) => [
+      ...prev,
+      { id: Date.now() + 1, sender: "bot", text: follow },
+    ]);
+
+    playTTS(follow);
+  };
+
   // converse 응답 처리
   useEffect(() => {
     if (!lastReply) return;
@@ -66,12 +93,31 @@ const ConversationalOrder = () => {
     else setRecommendedItems([]);
   }, [lastReply, playTTS]);
 
+  // 옵션/온도/사이즈 등을 묻는 질문을 채팅 메시지로 자동 추가
+  useEffect(() => {
+    if (!currentStep || !currentQuestion) return;
+
+    // 이미 같은 질문이 있으면 중복 추가 방지
+    setMessages((prev) => {
+      const exists = prev.some((m) => m.text === currentQuestion);
+      if (exists) return prev;
+
+      return [
+        ...prev,
+        { id: Date.now(), sender: "bot", text: currentQuestion },
+      ];
+    });
+
+    // 질문을 음성으로 읽기
+    playTTS(currentQuestion);
+  }, [currentStep, currentQuestion, playTTS]);
+
   // 스크롤 유지
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // 추천 메뉴 선택 시 order_start 요청을 보냄
+  // 추천 메뉴 선택 시 order_start 요청
   const startOrder = (menuName: string) => {
     setMessages((prev) => [
       ...prev,
@@ -132,7 +178,7 @@ const ConversationalOrder = () => {
     setRecommendedItems([]);
   };
 
-  // 주문 완료 후 추가 주문 초기화 함수
+  // 주문 완료 후 초기화
   const resetForNewOrder = () => {
     setMessages([
       {
@@ -155,7 +201,6 @@ const ConversationalOrder = () => {
   const renderBottomSheet = () => {
     if (!currentStep) return null;
 
-    // 온도 선택
     if (currentStep === "ask_temperature") {
       return (
         <BottomSheet title={currentQuestion ?? ""}>
@@ -164,24 +209,28 @@ const ConversationalOrder = () => {
               key={c}
               label={c}
               onClick={() => selectTemperature(c)}
+              handleChoiceSelect={handleChoiceSelect}
             />
           ))}
         </BottomSheet>
       );
     }
 
-    // 사이즈 선택
     if (currentStep === "ask_size") {
       return (
         <BottomSheet title={currentQuestion ?? ""}>
           {choices?.map((c: string) => (
-            <ChoiceButton key={c} label={c} onClick={() => selectSize(c)} />
+            <ChoiceButton
+              key={c}
+              label={c}
+              onClick={() => selectSize(c)}
+              handleChoiceSelect={handleChoiceSelect}
+            />
           ))}
         </BottomSheet>
       );
     }
 
-    // 옵션 여부 질문
     if (currentStep === "ask_detail_option_yn") {
       return (
         <BottomSheet title={currentQuestion ?? ""}>
@@ -190,15 +239,14 @@ const ConversationalOrder = () => {
               key={c}
               label={c}
               onClick={() => selectDetailOptionYn(c)}
+              handleChoiceSelect={handleChoiceSelect}
             />
           ))}
         </BottomSheet>
       );
     }
 
-    // 옵션 상세 선택 (순차 진행)
     if (currentStep === "show_detail_options") {
-      // 현재 옵션 그룹
       const group = optionGroups?.[currentOptionGroupIndex];
       if (!group) return null;
 
@@ -207,7 +255,9 @@ const ConversationalOrder = () => {
           {group.options.map((opt) => (
             <button
               key={opt.id}
-              onClick={() => nextOptionGroup(opt.id)}
+              onClick={() => {
+                handleChoiceSelect(opt.name, () => nextOptionGroup(opt.id));
+              }}
               className="mb-[1vh] w-full rounded-xl border bg-white px-[3vw] py-[2vh] text-left"
             >
               {opt.name} (+{opt.extraPrice}원)
@@ -217,6 +267,7 @@ const ConversationalOrder = () => {
           <ChoiceButton
             label="선택 안함"
             onClick={() => nextOptionGroup(null)}
+            handleChoiceSelect={handleChoiceSelect}
           />
 
           <p className="mt-[2vh] text-center text-[3.2vw] text-(--text-secondary)">
@@ -226,7 +277,6 @@ const ConversationalOrder = () => {
       );
     }
 
-    // 주문 완료 표시
     if (currentStep === "order_item_complete") {
       return (
         <BottomSheet title="주문이 담겼습니다">
@@ -236,29 +286,29 @@ const ConversationalOrder = () => {
 
           <ChoiceButton
             label="장바구니 보기"
-            onClick={() => {
-              useKioskStore.getState().getCart();
-            }}
+            onClick={() => useKioskStore.getState().getCart()}
+            handleChoiceSelect={handleChoiceSelect}
           />
 
-          <ChoiceButton label="추가 주문하기" onClick={resetForNewOrder} />
+          <ChoiceButton
+            label="추가 주문하기"
+            onClick={resetForNewOrder}
+            handleChoiceSelect={handleChoiceSelect}
+          />
         </BottomSheet>
       );
     }
 
-    // 장바구니 표시
     if (currentStep === "cart") {
       const { cart, totalPrice } = useKioskStore.getState();
 
       return (
         <BottomSheet title="현재 주문 내역">
-          {/* 장바구니 전체 출력 */}
           {cart.map((item) => (
             <div
               key={item.orderDetailId}
               className="relative mb-[2vh] rounded-xl border bg-white p-[3vw]"
             >
-              {/* 삭제 버튼 */}
               <button
                 onClick={() =>
                   useKioskStore.getState().deleteCartItem(item.orderDetailId)
@@ -282,19 +332,16 @@ const ConversationalOrder = () => {
                 </p>
               ))}
 
-              {/* 상품 금액 */}
               <p className="mt-[1vh] text-[4vw] font-semibold">
                 {item.lineTotalPrice.toLocaleString()}원
               </p>
             </div>
           ))}
 
-          {/* 총 금액 */}
           <p className="mt-[1vh] text-[4.5vw] font-bold">
             총 금액: {totalPrice}원
           </p>
 
-          {/* 버튼 그룹 */}
           <div className="mt-[3vh] flex gap-[3vw]">
             <button
               className="flex-1 rounded-xl bg-green-600 px-[4vw] py-[2vh] text-[4vw] text-white shadow-md active:scale-95"
@@ -442,12 +489,14 @@ const BottomSheet = ({
 const ChoiceButton = ({
   label,
   onClick,
+  handleChoiceSelect,
 }: {
   label: string;
   onClick: () => void;
+  handleChoiceSelect: (label: string, callback: () => void) => void;
 }) => (
   <button
-    onClick={onClick}
+    onClick={() => handleChoiceSelect(label, onClick)}
     className="w-full rounded-xl bg-(--color-primary) px-[4vw] py-[2vh] text-[4vw] text-white shadow-md active:scale-95"
   >
     {label}

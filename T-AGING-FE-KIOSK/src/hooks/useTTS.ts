@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useRef } from "react";
 import axios from "axios";
 
 export const useTTS = () => {
-  const [, setAudio] = useState<HTMLAudioElement | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const playTTS = async (text: string) => {
+  const playTTS = async (text: string, onDone?: () => void) => {
     try {
       const res = await axios.post(
         "https://api.openai.com/v1/audio/speech",
@@ -19,29 +19,40 @@ export const useTTS = () => {
             "Content-Type": "application/json",
             Authorization: `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`,
           },
-          responseType: "arraybuffer", // Blob 대신 arraybuffer로 받아야 함
+          responseType: "arraybuffer",
         }
       );
 
-      /** ArrayBuffer → Blob */
       const blob = new Blob([res.data], { type: "audio/mpeg" });
-
-      /** Blob → 객체 URL */
       const url = URL.createObjectURL(blob);
 
-      /** 오디오 재생 */
-      const audioElement = new Audio(url);
-      setAudio(audioElement);
-      audioElement.play();
+      // 기존 TTS 재생 중이면 즉시 중단
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
 
-      /** 끝나면 메모리에서 삭제 */
-      audioElement.onended = () => {
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.play();
+
+      audio.onended = () => {
         URL.revokeObjectURL(url);
+        audioRef.current = null;
+        onDone?.();
       };
     } catch (err) {
       console.error("TTS axios 오류", err);
     }
   };
 
-  return { playTTS };
+  // TTS 즉시 중단 기능
+  const stopTTS = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+  };
+
+  return { playTTS, stopTTS };
 };

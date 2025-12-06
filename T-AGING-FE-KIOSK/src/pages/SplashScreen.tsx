@@ -1,20 +1,30 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import masil from "@/assets/images/masil.png";
 import { useKioskStore } from "@/store/useWebSocketStore";
+import { useTTS } from "@/hooks/useTTS";
 
 const SplashScreen = () => {
   const navigate = useNavigate();
   const { setTitle } = useOutletContext<{ setTitle: (v: string) => void }>();
   const connect = useKioskStore((s) => s.connect);
+  const { playTTS } = useTTS();
+
+  const startedRef = useRef(false);
 
   useEffect(() => {
     setTitle("마실이 키오스크");
   }, [setTitle]);
 
   const handleStart = () => {
-    connect(); // 웹소켓 연결
-    navigate("/membership");
+    if (startedRef.current) return;
+    startedRef.current = true;
+
+    connect();
+
+    playTTS("마실이 키오스크에 오신 걸 환영합니다!", () => {
+      navigate("/membership");
+    });
   };
 
   return (

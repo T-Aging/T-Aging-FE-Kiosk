@@ -1,22 +1,38 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import masil from "@/assets/images/masil.png";
 import { useKioskStore } from "@/store/useWebSocketStore";
+import { useTTS } from "@/hooks/useTTS";
 
 const OrderConfirmation = () => {
   const navigate = useNavigate();
   const { setTitle } = useOutletContext<{ setTitle: (v: string) => void }>();
 
   const { cart, totalPrice, orderConfirm } = useKioskStore();
+  const { playTTS, stopTTS } = useTTS();
+
+  const spokenRef = useRef(false); // 음성 재생 1회 제한
 
   useEffect(() => {
     setTitle("주문 확인");
 
-    // 화면 들어오면 서버에 주문 확정 요청 보내기
+    // 처음 화면 진입 시 서버에 주문 확정 요청
     orderConfirm();
-  }, [setTitle, orderConfirm]);
+
+    // 음성 안내 1회만 재생
+    if (!spokenRef.current) {
+      spokenRef.current = true;
+      playTTS("마지막으로 주문 내역이 정확한지 한 번 더 확인해주세요.");
+    }
+
+    // 화면 이탈 시 TTS 중지
+    return () => {
+      stopTTS();
+    };
+  }, [setTitle, orderConfirm, playTTS, stopTTS]);
 
   const handleConfirmOrder = () => {
+    stopTTS(); // 이동 시 음성 중지
     navigate("/order/complete", {
       state: { cart, totalPrice },
     });
@@ -82,13 +98,16 @@ const OrderConfirmation = () => {
 
           {/* 옵션 수정 */}
           <button
-            onClick={() => navigate("/order")}
+            onClick={() => {
+              stopTTS();
+              navigate("/order");
+            }}
             className="mt-[3vh] w-full rounded-xl border border-(--border-light) bg-white py-[2.2vh] text-[4vw] text-(--text-primary) shadow-sm active:scale-95"
           >
             옵션 수정하기
           </button>
 
-          {/* 주문 확정 */}
+          {/* 최종 주문 확정 */}
           <button
             onClick={handleConfirmOrder}
             className="mt-[2vh] w-full rounded-xl bg-(--color-primary) py-[2.4vh] text-[4.5vw] font-semibold text-(--text-inverse) shadow-md active:scale-95"
@@ -101,7 +120,10 @@ const OrderConfirmation = () => {
       {/* FOOTER */}
       <div className="flex h-[10vh] w-full items-center justify-between border-t border-(--border-light) bg-white px-[4vw]">
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => {
+            stopTTS();
+            navigate(-1);
+          }}
           className="text-[5vw] text-(--text-primary)"
         >
           ← 이전
