@@ -7,6 +7,29 @@ export interface StartRequest {
   };
 }
 
+// 최근 주문 요청
+export interface RecentOrdersRequest {
+  type: "recent_orders";
+  data: null;
+}
+
+// 최근 주문 상세 요청
+export interface RecentOrderDetailRequest {
+  type: "recent_order_detail";
+  data: {
+    orderId: number;
+  };
+}
+
+// 최근 주문 메뉴 장바구니 담기 요청
+export interface RecentOrderToCartRequest {
+  type: "recent_order_to_cart";
+  data: {
+    orderId: number;
+    orderDetailId: number;
+  };
+}
+
 // converse 요청
 export interface ConverseRequest {
   type: "converse";
@@ -75,6 +98,7 @@ export interface OrderConfirmRequest {
   data: null;
 }
 
+
 // 전체 Request 타입 묶기
 export type KioskRequest =
   | StartRequest
@@ -86,4 +110,7 @@ export type KioskRequest =
   | SelectDetailOptionsRequest
   | GetCartRequest
   | DeleteCartItemRequest
-  | OrderConfirmRequest;
+  | OrderConfirmRequest
+  | RecentOrdersRequest
+  | RecentOrderDetailRequest
+  | RecentOrderToCartRequest; 

@@ -13,6 +13,9 @@ import type {
   OptionGroup,
   CartItem,
   ConverseResponse,
+  RecentOrderDetailResponse,
+  RecentOrdersResponse,
+  RecentOrderToCartResponse
 } from "@/types/KioskResponse";
 
 interface KioskState {
@@ -51,6 +54,12 @@ interface KioskState {
   cart: CartItem[];
   totalPrice: number | null;
 
+  // 최근 주문 목록
+  recentOrders: RecentOrdersResponse["orders"] | null;
+
+  // 최근 주문 상세 정보
+  recentOrderDetail: RecentOrderDetailResponse | null;
+
   connect: () => void;
   sendMessage: (msg: KioskRequest) => void;
 
@@ -66,6 +75,15 @@ interface KioskState {
   getCart: () => void;
   deleteCartItem: (orderDetailId: number) => void;
   orderConfirm: () => void;
+
+  // 최근 주문 요청
+  getRecentOrders: () => void;
+
+  // 최근 주문 상세 조회
+  getRecentOrderDetail: (orderId: number) => void;
+
+  // 최근 주문 선택 → 장바구니 담기
+  recentOrderToCart: (orderId: number, orderDetailId: number) => void;
 }
 
 export const useKioskStore = create<KioskState>((set, get) => ({
@@ -92,6 +110,12 @@ export const useKioskStore = create<KioskState>((set, get) => ({
 
   cart: [],
   totalPrice: null,
+
+  // 최근 주문 초기값
+  recentOrders: null,
+
+  // 최근 주문 상세 값 초기화
+  recentOrderDetail: null,
 
   connect: () => {
     if (get().socket) return;
@@ -251,6 +275,40 @@ export const useKioskStore = create<KioskState>((set, get) => ({
           });
           break;
         }
+
+        // 최근 주문 응답 처리
+        case "recent_orders": {
+          const res = typedMsg as RecentOrdersResponse;
+          set({
+            currentStep: "recent_orders",
+            recentOrders: res.orders,
+            isVoiceStage: false,
+          });
+          break;
+        }
+
+        // 최근 주문 상세 응답 처리
+        case "recent_order_detail": {
+          const res = typedMsg as RecentOrderDetailResponse;
+          set({
+            currentStep: "recent_order_detail",
+            recentOrderDetail: res,
+            isVoiceStage: false,
+          });
+          break;
+        }
+
+        // 최근 주문 선택 → 장바구니 담기 응답 처리
+        case "recent_order_to_cart": {
+          const res = typedMsg as RecentOrderToCartResponse;
+          set({
+            currentStep: "recent_order_to_cart",
+            cart: res.items,
+            totalPrice: res.totalPrice,
+            isVoiceStage: false,
+          });
+          break;
+        }
       }
     };
 
@@ -358,6 +416,30 @@ export const useKioskStore = create<KioskState>((set, get) => ({
     get().sendMessage({
       type: "order_confirm",
       data: null,
+    });
+  },
+
+  // 최근 주문 요청
+  getRecentOrders: () => {
+    get().sendMessage({
+      type: "recent_orders",
+      data: null,
+    });
+  },
+
+  // 최근 주문 상세 조회
+  getRecentOrderDetail: (orderId: number) => {
+    get().sendMessage({
+      type: "recent_order_detail",
+      data: { orderId },
+    });
+  },
+
+  // 장바구니 담기
+  recentOrderToCart: (orderId: number, orderDetailId: number) => {
+    get().sendMessage({
+      type: "recent_order_to_cart",
+      data: { orderId, orderDetailId },
     });
   },
 }));

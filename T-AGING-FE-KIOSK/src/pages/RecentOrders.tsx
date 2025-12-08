@@ -2,70 +2,36 @@ import { useEffect, useState, useRef } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import masil from "@/assets/images/masil.png";
 import { useTTS } from "@/hooks/useTTS";
+import { useKioskStore } from "@/store/useWebSocketStore";
+import type { RecentOrderItem } from "@/types/KioskResponse";
 
 type OutletContextType = {
   setTitle: (v: string) => void;
 };
 
-type RecentItem = {
-  id: number;
-  name: string;
-  detail: string;
-  price: number;
-};
-
-type RecentOrder = {
-  id: number;
-  items: RecentItem[];
-  date: string;
-  totalPrice: number;
-};
-
-const recentOrdersMock: RecentOrder[] = [
-  {
-    id: 1,
-    items: [
-      { id: 101, name: "아메리카노", detail: "ICE / 연하게", price: 4500 },
-      { id: 102, name: "샌드위치", detail: "햄 & 치즈", price: 5500 },
-    ],
-    date: "2일 전",
-    totalPrice: 10000,
-  },
-  {
-    id: 2,
-    items: [
-      { id: 201, name: "카페라떼", detail: "ICE", price: 4800 },
-      { id: 202, name: "브런치 세트", detail: "샌드위치 + 음료", price: 5500 },
-    ],
-    date: "5일 전",
-    totalPrice: 10300,
-  },
-];
-
 const RecentOrders = () => {
   const navigate = useNavigate();
   const { setTitle } = useOutletContext<OutletContextType>();
-
   const { playTTS, stopTTS } = useTTS();
 
-  // TTS가 여러 번 재생되는 것을 막기 위해 사용
+  // WebSocket 상태
+  const {
+    recentOrders,
+    recentOrderDetail,
+    getRecentOrders,
+    getRecentOrderDetail,
+    recentOrderToCart,
+  } = useKioskStore();
+
+  // 음성 안내 중복 방지
   const spokenRef = useRef(false);
 
-  // 상세보기 팝업 상태
+  // 상세 팝업
   const [showDetail, setShowDetail] = useState(false);
-  const [detailOrder, setDetailOrder] = useState<RecentOrder | null>(null);
-
-  const openDetail = (order: RecentOrder) => {
-    setDetailOrder(order);
-    setShowDetail(true);
-  };
-
-  const closeDetail = () => setShowDetail(false);
 
   useEffect(() => {
     setTitle("최근 주문");
 
-    // 진입 시 단 한 번만 음성 안내 재생
     if (!spokenRef.current) {
       spokenRef.current = true;
       playTTS(
@@ -73,30 +39,38 @@ const RecentOrders = () => {
       );
     }
 
-    // 화면을 떠날 때 남아 있는 음성을 중단
-    return () => {
-      stopTTS();
-    };
-  }, [setTitle, playTTS, stopTTS]);
+    getRecentOrders();
 
-  // 최근 주문 항목을 선택하면 음성을 중단하고 다음 화면으로 이동
-  const handleClickOrder = (order: RecentOrder) => {
+    return () => stopTTS();
+  }, [setTitle, playTTS, stopTTS, getRecentOrders]);
+
+  // 최근 주문 선택
+  const handleClickOrder = async (order: RecentOrderItem) => {
     stopTTS();
-    navigate("/order/confirmation", {
-      state: {
-        type: "recent",
-        order,
-      },
-    });
+    recentOrderToCart(order.orderId, order.orderId);
+
+    // recent_order_to_cart 응답이 오면 zustand에서 cart 업데이트됨
+    // cart 화면으로 이동
+    navigate("/cart");
   };
 
-  // 새로 주문하기 선택 시에도 음성 중단 후 이동
+  // 상세보기 요청 & 팝업 열기
+  const openDetail = (order: RecentOrderItem) => {
+    stopTTS();
+    setShowDetail(true);
+    getRecentOrderDetail(order.orderId);
+  };
+
+  // 상세 닫기
+  const closeDetail = () => {
+    setShowDetail(false);
+  };
+
   const handleNewOrder = () => {
     stopTTS();
     navigate("/order");
   };
 
-  // 뒤로가기 선택 시 음성 중단 후 이동
   const handleGoBack = () => {
     stopTTS();
     navigate(-1);
@@ -107,7 +81,6 @@ const RecentOrders = () => {
       {/* CONTENT */}
       <div className="flex flex-1 flex-col items-center overflow-y-auto px-[4vw] pt-[8vh]">
         <div className="w-full rounded-2xl border border-(--border-soft) bg-white px-[4vw] py-[3vh] shadow-md">
-          {/* 상단 안내 영역 */}
           <div className="flex items-center">
             <img src={masil} alt="masil" className="mb-[1vh] h-auto w-[20vw]" />
             <div className="rounded-2xl border border-(--border-light) bg-white px-[5vw] py-[2vh] text-[5vw] text-(--text-primary) shadow-md">
@@ -115,35 +88,40 @@ const RecentOrders = () => {
             </div>
           </div>
 
-          {/* 최근 주문 리스트 */}
+          {/* 리스트 */}
           <div className="mt-[3vh] mb-[3vh] flex flex-col gap-[2vh]">
-            {recentOrdersMock.map((order) => {
-              const firstItem = order.items[0];
-              const extraCount = order.items.length - 1;
+            {recentOrders?.length === 0 && (
+              <p className="text-center text-[4vw] text-(--text-secondary)">
+                최근 주문 내역이 없습니다.
+              </p>
+            )}
+
+            {recentOrders?.map((order) => {
               const title =
-                extraCount > 0
-                  ? `${firstItem.name} 외 ${extraCount}개`
-                  : firstItem.name;
+                order.otherMenuCount > 0
+                  ? `${order.mainMenuName} 외 ${order.otherMenuCount}개`
+                  : order.mainMenuName;
 
               return (
                 <div
-                  key={order.id}
+                  key={order.orderId}
                   onClick={() => handleClickOrder(order)}
-                  className="relative w-full cursor-pointer rounded-2xl border-4 border-(--border-light) bg-white px-[4vw] py-[3vh] text-left shadow-md transition active:scale-95"
+                  className="relative flex w-full cursor-pointer items-center gap-[3vw] rounded-2xl border-4 border-(--border-light) bg-white px-[4vw] py-[3vh] shadow-md transition active:scale-95"
                 >
-                  <p className="text-[5vw] font-semibold text-(--text-primary)">
-                    {title}
-                  </p>
+                  <div className="flex flex-col">
+                    <p className="text-[5vw] font-semibold text-(--text-primary)">
+                      {title}
+                    </p>
 
-                  <p className="text-[4.5vw] font-semibold text-blue-600">
-                    {order.totalPrice.toLocaleString()}원
-                  </p>
+                    <p className="text-[4.5vw] font-semibold text-blue-600">
+                      {order.totalPrice.toLocaleString()}원
+                    </p>
 
-                  <p className="text-[3vw] text-(--text-secondary)">
-                    {order.date}
-                  </p>
+                    <p className="text-[3vw] text-(--text-secondary)">
+                      {order.daysAgo}일 전
+                    </p>
+                  </div>
 
-                  {/* 상세보기 버튼 */}
                   <button
                     type="button"
                     onClick={(e) => {
@@ -159,7 +137,6 @@ const RecentOrders = () => {
             })}
           </div>
 
-          {/* 새로 주문하기 버튼 */}
           <button
             type="button"
             onClick={handleNewOrder}
@@ -190,43 +167,46 @@ const RecentOrders = () => {
         </div>
       </div>
 
-      {/* 상세보기 팝업 */}
-      {showDetail && detailOrder && (
+      {/* 상세보기 팝업 (API 기반) */}
+      {showDetail && recentOrderDetail && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-[80vw] rounded-2xl bg-white p-[5vw] shadow-xl">
             <p className="mb-[3vh] text-[6vw] font-semibold text-(--text-primary)">
-              {detailOrder.items[0].name}
-              {detailOrder.items.length > 1 &&
-                ` 외 ${detailOrder.items.length - 1}개`}
+              {recentOrderDetail.items[0]?.menuName}
             </p>
 
-            <div className="mb-[3vh] flex flex-col gap-[2vh]">
-              {detailOrder.items.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between rounded-xl border border-(--border-light) px-[3vw] py-[2vh]"
-                >
-                  <div>
-                    <p className="text-[4vw] font-semibold text-(--text-primary)">
-                      {item.name}
-                    </p>
-                    <p className="text-[3vw] text-(--text-secondary)">
-                      {item.detail}
-                    </p>
-                  </div>
+            <p className="text-[4vw] text-(--text-secondary)">
+              {new Date(recentOrderDetail.orderDateTime).toLocaleString()}
+            </p>
 
-                  <p className="text-[4vw] font-semibold text-(--text-primary)">
-                    {item.price.toLocaleString()}원
+            <div className="mt-[2vh] border-t border-(--border-light) pt-[2vh]">
+              {recentOrderDetail.items.map((item) => (
+                <div key={item.orderDetailId} className="mb-[2vh]">
+                  <p className="text-[5vw] font-bold">{item.menuName}</p>
+
+                  <p className="text-[4vw]">
+                    {item.temperature} / {item.size}
+                  </p>
+
+                  {item.options.length > 0 && (
+                    <div className="mt-[1vh] ml-[2vw]">
+                      {item.options.map((op) => (
+                        <p
+                          key={op.optionValueId}
+                          className="text-[3.5vw] text-(--text-secondary)"
+                        >
+                          • {op.optionGroupName}: {op.optionValueName} (+
+                          {op.extraPrice}원)
+                        </p>
+                      ))}
+                    </div>
+                  )}
+
+                  <p className="mt-[1vh] text-[4.5vw] font-semibold">
+                    {item.lineTotalPrice.toLocaleString()}원
                   </p>
                 </div>
               ))}
-            </div>
-
-            <div className="mt-[2vh] flex items-center justify-between">
-              <p className="text-[4vw] text-(--text-secondary)">총 금액</p>
-              <p className="text-[5vw] font-bold text-(--text-primary)">
-                {detailOrder.totalPrice.toLocaleString()}원
-              </p>
             </div>
 
             <button

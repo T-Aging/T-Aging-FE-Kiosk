@@ -47,6 +47,71 @@ export interface StartResponse {
   menuCount: number;
 }
 
+// 최근 주문 내역 아이템 타입
+export interface RecentOrderItem {
+  orderId: number;
+  totalPrice: number;
+  orderDateTime: string;
+  daysAgo: number;
+  mainMenuName: string;
+  mainMenuPrice: number;
+  otherMenuCount: number;
+}
+
+// 최근 주문 응답 타입
+export interface RecentOrdersResponse {
+  type: "recent_orders";
+  orders: RecentOrderItem[];
+}
+
+// 최근 주문 상세 옵션 아이템 타입
+export interface RecentOrderDetailOptionItem {
+  optionGroupId: number;
+  optionGroupName: string;
+  optionValueId: number;
+  optionValueName: string;
+  extraPrice: number;
+}
+
+// 최근 주문 상세 아이템 타입
+export interface RecentOrderDetailItem {
+  orderDetailId: number;
+  menuId: number;
+  menuName: string;
+  menuImage: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotalPrice: number;
+  temperature: string;
+  size: string;
+  options: RecentOrderDetailOptionItem[];
+}
+
+// 최근 주문 상세 응답 타입
+export interface RecentOrderDetailResponse {
+  type: "recent_order_detail";
+  orderId: number;
+  storeId: number;
+  storeName: string;
+  sessionId: string;
+  orderDateTime: string;
+  totalPrice: number;
+  items: RecentOrderDetailItem[];
+}
+
+// 최근 주문 메뉴 장바구니 담기 응답 타입
+export interface RecentOrderToCartResponse {
+  type: "recent_order_to_cart";
+  orderId: number;
+  storeId: number;
+  storeName: string;
+  sessionId: string;
+  orderDateTime: string;
+  totalPrice: number;
+  waitingNum: number | null;
+  items: RecentOrderDetailItem[];
+}
+
 // converse 추천 메뉴 아이템 타입
 export interface ConverseItem {
   name: string;
@@ -157,4 +222,7 @@ export type KioskResponse =
   | OrderItemCompleteResponse
   | CartResponse
   | CartUpdatedResponse
-  | OrderConfirmResponse;
+  | OrderConfirmResponse
+  | RecentOrdersResponse
+  | RecentOrderDetailResponse
+  | RecentOrderToCartResponse;
