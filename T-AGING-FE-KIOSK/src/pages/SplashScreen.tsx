@@ -1,30 +1,37 @@
 import { useEffect, useRef } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import masil from "@/assets/images/masil.png";
-import { useKioskStore } from "@/store/useWebSocketStore";
 import { useTTS } from "@/hooks/useTTS";
+import { useKioskStore } from "@/store/useWebSocketStore";
 
 const SplashScreen = () => {
   const navigate = useNavigate();
   const { setTitle } = useOutletContext<{ setTitle: (v: string) => void }>();
-  const connect = useKioskStore((s) => s.connect);
-  const { playTTS } = useTTS();
 
+  const { playTTS, stopTTS } = useTTS();
+  const connect = useKioskStore((s) => s.connect);
+  const sessionId = useKioskStore((s) => s.sessionId);
+  // 중복 클릭 방지
   const startedRef = useRef(false);
 
   useEffect(() => {
     setTitle("마실이 키오스크");
-  }, [setTitle]);
+
+    // Splash는 재생만 하고, WebSocket 연결은 App 최상단에서 한다.
+    playTTS("마실이 키오스크에 오신 걸 환영합니다!");
+    if (!sessionId) connect();
+
+    return () => stopTTS();
+  }, [setTitle, playTTS, stopTTS, sessionId, connect]);
 
   const handleStart = () => {
     if (startedRef.current) return;
     startedRef.current = true;
 
-    connect();
+    stopTTS();
 
-    playTTS("마실이 키오스크에 오신 걸 환영합니다!", () => {
-      navigate("/membership");
-    });
+    // 연결(connect())은 App.tsx에서 이미 수행됨
+    navigate("/membership");
   };
 
   return (

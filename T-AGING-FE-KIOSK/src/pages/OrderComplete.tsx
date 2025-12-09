@@ -2,47 +2,44 @@ import { useEffect, useRef } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import masil from "@/assets/images/masil.png";
 import { useTTS } from "@/hooks/useTTS";
+import { useKioskStore } from "@/store/useWebSocketStore";
 
 const OrderComplete = () => {
   const navigate = useNavigate();
   const { setTitle } = useOutletContext<{ setTitle: (v: string) => void }>();
   const { playTTS, stopTTS } = useTTS();
 
-  const spokenRef = useRef(false); // 음성 1회 재생 플래그
-  const timerRef = useRef<number | null>(null); // 자동 이동 타이머
+  const sendSessionEnd = useKioskStore((s) => s.sendSessionEnd);
+
+  const spokenRef = useRef(false);
+  const timerRef = useRef<number | null>(null);
 
   useEffect(() => {
     setTitle("주문 완료");
 
-    // TTS는 1번만 재생
     if (!spokenRef.current) {
       spokenRef.current = true;
       playTTS("주문이 접수되었어요! 편한 자리에서 잠시만 기다려주세요!");
     }
 
-    // 10초 후 자동으로 시작 화면으로 이동
+    // 8초 후 세션 종료 + 홈 이동
     timerRef.current = setTimeout(() => {
-      stopTTS(); // 이동 전 TTS 중지
+      stopTTS();
+      sendSessionEnd();
       navigate("/");
-    }, 10000);
+    }, 8000);
 
-    // 언마운트 또는 화면 이동 시 정리
     return () => {
       stopTTS();
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [setTitle, playTTS, stopTTS, navigate]);
+  }, [setTitle, playTTS, stopTTS, navigate, sendSessionEnd]);
 
   const goHome = () => {
     stopTTS();
     if (timerRef.current) clearTimeout(timerRef.current);
+    sendSessionEnd();
     navigate("/");
-  };
-
-  const goBack = () => {
-    stopTTS();
-    if (timerRef.current) clearTimeout(timerRef.current);
-    navigate(-1);
   };
 
   return (
@@ -84,7 +81,10 @@ const OrderComplete = () => {
 
       {/* FOOTER */}
       <div className="flex h-[10vh] w-full items-center justify-between border-t border-(--border-light) bg-white px-[4vw]">
-        <button onClick={goBack} className="text-[5vw] text-(--text-primary)">
+        <button
+          className="text-[5vw] text-(--text-primary) opacity-40"
+          disabled
+        >
           ← 이전
         </button>
 

@@ -1,3 +1,14 @@
+// 전화번호 로그인 응답 타입
+export interface PhoneNumLoginResponse {
+  type: "phone_num_login";
+  login_success: boolean;
+  message: string;
+  userId: number | null;
+  username: string | null;
+  maskedPhone: string | null;
+}
+
+
 // 옵션 아이템 타입
 export interface OptionItem {
   optionGroupId: number;
@@ -209,6 +220,11 @@ export interface OrderConfirmResponse {
   totalPrice: number;
   items: CartItem[];
 }
+// 세션 종료 응답
+export interface SessionEndedResponse {
+  type: "SESSION_ENDED";
+  message: string;
+}
 
 // 전체 Response 타입
 export type KioskResponse =
@@ -225,4 +241,6 @@ export type KioskResponse =
   | OrderConfirmResponse
   | RecentOrdersResponse
   | RecentOrderDetailResponse
-  | RecentOrderToCartResponse;
+  | RecentOrderToCartResponse
+  | SessionEndedResponse
+  | PhoneNumLoginResponse;

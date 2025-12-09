@@ -1,3 +1,11 @@
+// 전화번호 로그인 요청
+export interface PhoneNumLoginRequest {
+  type: "phone_num_login";
+  data: {
+    phoneNumber: string;
+  };
+}
+
 // start 요청
 export interface StartRequest {
   type: "start";
@@ -26,7 +34,6 @@ export interface RecentOrderToCartRequest {
   type: "recent_order_to_cart";
   data: {
     orderId: number;
-    orderDetailId: number;
   };
 }
 
@@ -98,9 +105,15 @@ export interface OrderConfirmRequest {
   data: null;
 }
 
+// 세션 종료 요청
+export interface SessionEndRequest {
+  type: "session_end";
+  data: null;
+}
 
 // 전체 Request 타입 묶기
 export type KioskRequest =
+  | PhoneNumLoginRequest 
   | StartRequest
   | ConverseRequest
   | OrderStartRequest
@@ -113,4 +126,5 @@ export type KioskRequest =
   | OrderConfirmRequest
   | RecentOrdersRequest
   | RecentOrderDetailRequest
-  | RecentOrderToCartRequest; 
+  | RecentOrderToCartRequest
+  | SessionEndRequest;

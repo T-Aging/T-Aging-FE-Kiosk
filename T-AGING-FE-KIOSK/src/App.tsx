@@ -11,6 +11,8 @@ import ConversationalOrder from "./pages/ConversationalOrder";
 import OrderConfirmation from "./pages/OrderConfirmation";
 import OrderComplete from "./pages/OrderComplete";
 import PWAInstallUI from "@/components/PWAInstallUI";
+import { useKioskStore } from "./store/useWebSocketStore";
+import { useEffect } from "react";
 
 const router = createBrowserRouter([
   {
@@ -33,6 +35,13 @@ const router = createBrowserRouter([
 const queryClient = new QueryClient();
 
 function App() {
+  const connect = useKioskStore((s) => s.connect);
+
+  // WebSocket 연결은 App 시작 시 한번만
+  useEffect(() => {
+    connect();
+  }, [connect]);
+
   return (
     <>
       <PWAInstallUI />

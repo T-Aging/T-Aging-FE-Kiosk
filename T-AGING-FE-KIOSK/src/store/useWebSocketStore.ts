@@ -2,62 +2,42 @@ import { create } from "zustand";
 import type { KioskRequest } from "@/types/KioskRequest";
 import type {
   KioskResponse,
-  AskTemperatureResponse,
-  AskSizeResponse,
-  AskDetailOptionYnResponse,
-  ShowDetailOptionsResponse,
-  OrderItemCompleteResponse,
-  CartResponse,
-  CartUpdatedResponse,
-  OrderConfirmResponse,
   OptionGroup,
   CartItem,
   ConverseResponse,
   RecentOrderDetailResponse,
   RecentOrdersResponse,
-  RecentOrderToCartResponse
 } from "@/types/KioskResponse";
 
 interface KioskState {
   socket: WebSocket | null;
   sessionId: string | null;
 
-  // 대화 응답 (converse)
   lastReply: ConverseResponse | null;
 
-  // 첫 단계 음성 입력 여부
   isVoiceStage: boolean;
 
-  // 주문 항목 담기 완료 메시지
   orderCompleteMessage: string | null;
 
-  // 주문 흐름 상태
   currentStep: string | null;
   currentQuestion: string | null;
   choices: string[] | null;
 
-  // 주문 선택 정보
   menuName: string | null;
   temperature: string | null;
   size: string | null;
 
-  // 옵션 그룹 전체
   optionGroups: OptionGroup[] | null;
 
-  // 옵션 그룹 순차 선택을 위한 인덱스
   currentOptionGroupIndex: number;
 
-  // 선택한 옵션 ID 누적
   selectedOptionIds: number[];
 
-  // 장바구니 정보
   cart: CartItem[];
   totalPrice: number | null;
 
-  // 최근 주문 목록
   recentOrders: RecentOrdersResponse["orders"] | null;
 
-  // 최근 주문 상세 정보
   recentOrderDetail: RecentOrderDetailResponse | null;
 
   connect: () => void;
@@ -76,14 +56,13 @@ interface KioskState {
   deleteCartItem: (orderDetailId: number) => void;
   orderConfirm: () => void;
 
-  // 최근 주문 요청
   getRecentOrders: () => void;
 
-  // 최근 주문 상세 조회
   getRecentOrderDetail: (orderId: number) => void;
 
-  // 최근 주문 선택 → 장바구니 담기
-  recentOrderToCart: (orderId: number, orderDetailId: number) => void;
+  recentOrderToCart: (orderId: number) => void;
+
+  sendSessionEnd: () => void;
 }
 
 export const useKioskStore = create<KioskState>((set, get) => ({
@@ -111,10 +90,8 @@ export const useKioskStore = create<KioskState>((set, get) => ({
   cart: [],
   totalPrice: null,
 
-  // 최근 주문 초기값
   recentOrders: null,
 
-  // 최근 주문 상세 값 초기화
   recentOrderDetail: null,
 
   connect: () => {
@@ -125,7 +102,7 @@ export const useKioskStore = create<KioskState>((set, get) => ({
     ws.onopen = () => {
       const startMsg: KioskRequest = {
         type: "start",
-        data: { storeId: "001", menuVersion: 1 },
+        data: { storeId: "001", menuVersion: 1 }
       };
       ws.send(JSON.stringify(startMsg));
     };
@@ -133,6 +110,15 @@ export const useKioskStore = create<KioskState>((set, get) => ({
     ws.onmessage = (event) => {
       const msg = JSON.parse(event.data);
       console.log("WS Response:", msg);
+
+      if (
+        typeof msg === "object" &&
+        msg !== null &&
+        msg.type === "phone_num_login"
+      ) {
+        set({ lastReply: msg });
+        return;
+      }
 
       if (
         typeof msg === "object" &&
@@ -150,9 +136,9 @@ export const useKioskStore = create<KioskState>((set, get) => ({
             reply: msg.reply,
             intent: msg.intent ?? null,
             reason: msg.reason ?? null,
-            items: msg.items ?? [],
+            items: msg.items ?? []
           },
-          isVoiceStage: false,
+          isVoiceStage: false
         });
         return;
       }
@@ -177,138 +163,120 @@ export const useKioskStore = create<KioskState>((set, get) => ({
         case "converse":
           set({
             lastReply: { ...(typedMsg as ConverseResponse) },
-            isVoiceStage: false,
+            isVoiceStage: false
           });
           break;
 
         case "order_start":
           set({
             currentStep: "order_start",
-            isVoiceStage: true,
+            isVoiceStage: true
           });
           break;
 
-        case "ask_temperature": {
-          const res = typedMsg as AskTemperatureResponse;
+        case "ask_temperature":
           set({
             currentStep: "ask_temperature",
-            currentQuestion: res.question,
-            choices: res.choices,
-            menuName: res.menuName,
+            currentQuestion: typedMsg.question,
+            choices: typedMsg.choices,
+            menuName: typedMsg.menuName
           });
           break;
-        }
 
-        case "ask_size": {
-          const res = typedMsg as AskSizeResponse;
+        case "ask_size":
           set({
             currentStep: "ask_size",
-            currentQuestion: res.question,
-            choices: res.choices,
-            temperature: res.temperature,
-            menuName: res.menuName,
+            currentQuestion: typedMsg.question,
+            choices: typedMsg.choices,
+            temperature: typedMsg.temperature,
+            menuName: typedMsg.menuName
           });
           break;
-        }
 
-        case "ask_detail_option_yn": {
-          const res = typedMsg as AskDetailOptionYnResponse;
+        case "ask_detail_option_yn":
           set({
             currentStep: "ask_detail_option_yn",
-            currentQuestion: res.question,
-            choices: res.choices,
-            menuName: res.menuName,
-            temperature: res.temperature,
-            size: res.size,
+            currentQuestion: typedMsg.question,
+            choices: typedMsg.choices,
+            menuName: typedMsg.menuName,
+            temperature: typedMsg.temperature,
+            size: typedMsg.size
           });
           break;
-        }
 
-        case "show_detail_options": {
-          const res = typedMsg as ShowDetailOptionsResponse;
+        case "show_detail_options":
           set({
             currentStep: "show_detail_options",
-            optionGroups: res.optionGroups,
+            optionGroups: typedMsg.optionGroups,
             currentOptionGroupIndex: 0,
-            selectedOptionIds: [],
+            selectedOptionIds: []
           });
           break;
-        }
 
-        case "order_item_complete": {
-          const res = typedMsg as OrderItemCompleteResponse;
+        case "order_item_complete":
           set({
             currentStep: "order_item_complete",
-            orderCompleteMessage: res.message,
+            orderCompleteMessage: typedMsg.message
           });
           break;
-        }
 
-        case "cart": {
-          const res = typedMsg as CartResponse;
+        case "cart":
           set({
             currentStep: "cart",
-            cart: res.items,
-            totalPrice: res.totalPrice,
-            isVoiceStage: false,
+            cart: typedMsg.items,
+            totalPrice: typedMsg.totalPrice,
+            isVoiceStage: false
           });
           break;
-        }
 
-        case "cart_updated": {
-          const res = typedMsg as CartUpdatedResponse;
+        case "cart_updated":
           set({
             currentStep: "cart",
-            cart: res.items,
-            totalPrice: res.totalPrice,
-            isVoiceStage: false,
+            cart: typedMsg.items,
+            totalPrice: typedMsg.totalPrice,
+            isVoiceStage: false
           });
           break;
-        }
 
-        case "order_confirm": {
-          const res = typedMsg as OrderConfirmResponse;
+        case "order_confirm":
           set({
             currentStep: "order_confirm",
-            cart: res.items,
-            totalPrice: res.totalPrice,
+            cart: typedMsg.items,
+            totalPrice: typedMsg.totalPrice
           });
           break;
-        }
 
-        // 최근 주문 응답 처리
-        case "recent_orders": {
-          const res = typedMsg as RecentOrdersResponse;
+        case "recent_orders":
           set({
             currentStep: "recent_orders",
-            recentOrders: res.orders,
-            isVoiceStage: false,
+            recentOrders: typedMsg.orders,
+            isVoiceStage: false
           });
           break;
-        }
 
-        // 최근 주문 상세 응답 처리
-        case "recent_order_detail": {
-          const res = typedMsg as RecentOrderDetailResponse;
+        case "recent_order_detail":
           set({
             currentStep: "recent_order_detail",
-            recentOrderDetail: res,
-            isVoiceStage: false,
+            recentOrderDetail: typedMsg,
+            isVoiceStage: false
           });
           break;
-        }
 
-        // 최근 주문 선택 → 장바구니 담기 응답 처리
-        case "recent_order_to_cart": {
-          const res = typedMsg as RecentOrderToCartResponse;
+        case "recent_order_to_cart":
           set({
             currentStep: "recent_order_to_cart",
-            cart: res.items,
-            totalPrice: res.totalPrice,
-            isVoiceStage: false,
+            cart: typedMsg.items,
+            totalPrice: typedMsg.totalPrice,
+            isVoiceStage: false
           });
           break;
-        }
+
+        case "SESSION_ENDED":
+          set({
+            sessionId: null,
+            currentStep: "session_end"
+          });
+          break;
       }
     };
 
@@ -330,28 +298,28 @@ export const useKioskStore = create<KioskState>((set, get) => ({
   sendConverse: (text) => {
     get().sendMessage({
       type: "converse",
-      data: { userText: text },
+      data: { userText: text }
     });
   },
 
   selectTemperature: (temperature) => {
     get().sendMessage({
       type: "select_temperature",
-      data: { temperature },
+      data: { temperature }
     });
   },
 
   selectSize: (size) => {
     get().sendMessage({
       type: "select_size",
-      data: { size },
+      data: { size }
     });
   },
 
   selectDetailOptionYn: (answer) => {
     get().sendMessage({
       type: "detail_option_yn",
-      data: { answer },
+      data: { answer }
     });
   },
 
@@ -360,7 +328,7 @@ export const useKioskStore = create<KioskState>((set, get) => ({
 
     if (selectedOptionId !== null) {
       set({
-        selectedOptionIds: [...state.selectedOptionIds, selectedOptionId],
+        selectedOptionIds: [...state.selectedOptionIds, selectedOptionId]
       });
     }
 
@@ -370,76 +338,85 @@ export const useKioskStore = create<KioskState>((set, get) => ({
     if (nextIndex >= total) {
       get().sendMessage({
         type: "select_detail_options",
-        data: { selectedOptionValueIds: get().selectedOptionIds },
+        data: { selectedOptionValueIds: get().selectedOptionIds }
       });
 
       get().sendMessage({
         type: "get_cart",
-        data: null,
+        data: null
       });
 
       set({
         currentOptionGroupIndex: 0,
-        selectedOptionIds: [],
+        selectedOptionIds: []
       });
 
       return;
     }
 
     set({
-      currentOptionGroupIndex: nextIndex,
+      currentOptionGroupIndex: nextIndex
     });
   },
 
   selectDetailOptions: (selected) => {
     get().sendMessage({
       type: "select_detail_options",
-      data: { selectedOptionValueIds: selected },
+      data: { selectedOptionValueIds: selected }
     });
   },
 
   getCart: () => {
     get().sendMessage({
       type: "get_cart",
-      data: null,
+      data: null
     });
   },
 
   deleteCartItem: (orderDetailId) => {
     get().sendMessage({
       type: "delete_cart_item",
-      data: { orderDetailId },
+      data: { orderDetailId }
     });
   },
 
   orderConfirm: () => {
     get().sendMessage({
       type: "order_confirm",
-      data: null,
+      data: null
     });
   },
 
-  // 최근 주문 요청
   getRecentOrders: () => {
     get().sendMessage({
       type: "recent_orders",
-      data: null,
+      data: null
     });
   },
 
-  // 최근 주문 상세 조회
   getRecentOrderDetail: (orderId: number) => {
     get().sendMessage({
       type: "recent_order_detail",
-      data: { orderId },
+      data: { orderId }
     });
   },
 
-  // 장바구니 담기
-  recentOrderToCart: (orderId: number, orderDetailId: number) => {
+  recentOrderToCart: (orderId: number) => {
     get().sendMessage({
       type: "recent_order_to_cart",
-      data: { orderId, orderDetailId },
+      data: { orderId }
     });
   },
+
+  sendSessionEnd: () => {
+    const ws = get().socket;
+    if (ws?.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "session_end", data: null }));
+    }
+    set({
+      sessionId: null,
+      currentStep: "session_end",
+      isVoiceStage: false
+    });
+  }
 }));
