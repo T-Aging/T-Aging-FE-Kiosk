@@ -8,14 +8,14 @@ const PhoneInput = () => {
   const { setTitle } = useOutletContext<{ setTitle: (v: string) => void }>();
 
   const [phone, setPhone] = useState("");
+  const socketRef = useRef<WebSocket | null>(null);
 
   const { playTTS, stopTTS } = useTTS();
-  const spokenRef = useRef(false); // 음성 안내 1회 제한
+  const spokenRef = useRef(false);
 
   useEffect(() => {
     setTitle("전화번호 입력");
 
-    // 화면 진입 시 음성 안내 (1회만)
     if (!spokenRef.current) {
       spokenRef.current = true;
       playTTS(
@@ -23,13 +23,30 @@ const PhoneInput = () => {
       );
     }
 
-    // 다른 화면으로 이동할 때 음성 중단
+    // PhoneInput 전용 WebSocket 연결
+    const ws = new WebSocket(import.meta.env.VITE_WS_URL);
+    socketRef.current = ws;
+
+    ws.onmessage = (event) => {
+      const msg = JSON.parse(event.data);
+
+      // 여기서 type이 없음 → phone login 응답으로 처리
+      if ("login_success" in msg) {
+        if (msg.login_success) {
+          stopTTS();
+          navigate("/recent-orders");
+        } else {
+          playTTS("인증에 실패했습니다. 다시 입력해주세요.");
+        }
+      }
+    };
+
     return () => {
       stopTTS();
+      ws.close();
     };
-  }, [setTitle, playTTS, stopTTS]);
+  }, [setTitle, playTTS, stopTTS, navigate]);
 
-  // 전화번호 자동 하이픈 적용
   const formatPhone = (value: string) => {
     const digits = value.replace(/\D/g, "");
     if (digits.length < 4) return digits;
@@ -37,29 +54,34 @@ const PhoneInput = () => {
     return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7, 11)}`;
   };
 
-  // 숫자 클릭 시 입력
   const handleNumberClick = (num: string) => {
     const digitsOnly = phone.replace(/\D/g, "");
     if (digitsOnly.length >= 11) return;
     setPhone((prev) => formatPhone(prev + num));
   };
 
-  // 마지막 숫자 삭제
   const handleDelete = () => {
     const digitsOnly = phone.replace(/\D/g, "");
     setPhone(formatPhone(digitsOnly.slice(0, -1)));
   };
 
-  // 확인 버튼 클릭
   const handleConfirm = () => {
     const digitsOnly = phone.replace(/\D/g, "");
     if (digitsOnly.length < 10) return;
 
-    stopTTS(); // 음성 안내 중단
-    navigate("/recent-orders");
+    const ws = socketRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+    ws.send(
+      JSON.stringify({
+        type: "phone_num_login",
+        data: { phoneNumber: digitsOnly },
+      }),
+    );
+
+    stopTTS();
   };
 
-  // 뒤로가기
   const handleGoBack = () => {
     stopTTS();
     navigate(-1);
