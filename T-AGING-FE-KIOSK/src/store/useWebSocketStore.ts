@@ -250,7 +250,7 @@ export const useKioskStore = create<KioskState>((set, get) => ({
           set({
             currentStep: "recent_orders",
             recentOrders: typedMsg.orders,
-            isVoiceStage: false
+            isVoiceStage: true
           });
           break;
 
@@ -258,7 +258,7 @@ export const useKioskStore = create<KioskState>((set, get) => ({
           set({
             currentStep: "recent_order_detail",
             recentOrderDetail: typedMsg,
-            isVoiceStage: false
+            isVoiceStage: true
           });
           break;
 
@@ -267,7 +267,7 @@ export const useKioskStore = create<KioskState>((set, get) => ({
             currentStep: "recent_order_to_cart",
             cart: typedMsg.items,
             totalPrice: typedMsg.totalPrice,
-            isVoiceStage: false
+            isVoiceStage: true
           });
           break;
 
