@@ -218,6 +218,14 @@ export interface CartUpdatedResponse {
   items: CartItem[];
 }
 
+export interface OrderConfirmResponse {
+  type: "order_confirm";
+  orderId: number;
+  waitingNum: number;
+  totalPrice: number;
+  items: CartItem[];
+}
+
 // 주문 확정 응답
 export interface OrderConfirmResponse {
   type: "order_confirm";

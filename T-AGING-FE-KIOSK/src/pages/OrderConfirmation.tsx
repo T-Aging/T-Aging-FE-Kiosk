@@ -8,31 +8,28 @@ const OrderConfirmation = () => {
   const navigate = useNavigate();
   const { setTitle } = useOutletContext<{ setTitle: (v: string) => void }>();
 
-  const { cart, totalPrice, orderConfirm } = useKioskStore();
+  const { cart, totalPrice, getCart } = useKioskStore();
   const { playTTS, stopTTS } = useTTS();
 
-  const spokenRef = useRef(false); // 음성 재생 1회 제한
+  const spokenRef = useRef(false);
 
   useEffect(() => {
     setTitle("주문 확인");
 
-    // 처음 화면 진입 시 서버에 주문 확정 요청
-    orderConfirm();
+    // cart 요청
+    getCart();
 
-    // 음성 안내 1회만 재생
+    // 안내 음성 1회만
     if (!spokenRef.current) {
       spokenRef.current = true;
-      playTTS("마지막으로 주문 내역이 정확한지 한 번 더 확인해주세요.");
+      playTTS("마지막으로 주문 내역을 확인해주세요.");
     }
 
-    // 화면 이탈 시 TTS 중지
-    return () => {
-      stopTTS();
-    };
-  }, [setTitle, orderConfirm, playTTS, stopTTS]);
+    return () => stopTTS();
+  }, [setTitle, getCart, playTTS, stopTTS]);
 
-  const handleConfirmOrder = () => {
-    stopTTS(); // 이동 시 음성 중지
+  const handleNext = () => {
+    stopTTS();
     navigate("/order/complete", {
       state: { cart, totalPrice },
     });
@@ -40,82 +37,72 @@ const OrderConfirmation = () => {
 
   return (
     <div className="flex h-full w-full flex-col bg-(--bg-primary)">
-      {/* CONTENT — 스크롤 영역 */}
       <div className="flex flex-1 flex-col items-center overflow-y-auto px-[4vw] pt-[4vh]">
-        {/* 상단: 마실 + 말풍선 */}
         <div className="mb-[3vh] flex items-center gap-[3vw]">
           <img src={masil} alt="masil" className="h-auto w-[25vw]" />
-          <div className="rounded-2xl border border-(--border-light) bg-white px-[6vw] py-[2vh] text-[4vw] text-(--text-primary) shadow-md">
+          <div className="rounded-2xl border bg-white px-[6vw] py-[2vh] text-[4vw] shadow-md">
             이대로 주문할까요?
           </div>
         </div>
 
-        {/* 주문 내역 카드 */}
-        <div className="w-full rounded-2xl border border-(--border-light) bg-white px-[4vw] py-[3vh] shadow-md">
-          <p className="mb-[3vh] text-[5vw] font-semibold text-(--text-primary)">
-            주문 내역
-          </p>
-          <div className="flex flex-col gap-[2vh]">
-            {cart.map((item) => (
-              <div
-                key={item.orderDetailId}
-                className="flex items-center justify-between rounded-xl border border-(--border-soft) bg-white px-[3vw] py-[2vh] shadow-sm"
-              >
-                <div>
-                  <p className="text-[4vw] font-semibold text-(--text-primary)">
-                    {item.menuName}
-                  </p>
+        <div className="w-full rounded-2xl border bg-white px-[4vw] py-[3vh] shadow-md">
+          <p className="mb-[3vh] text-[5vw] font-semibold">주문 내역</p>
 
-                  <p className="text-[3vw] text-(--text-secondary)">
-                    {item.temperature} / {item.size}
-                  </p>
-
-                  {item.options.map((opt) => (
-                    <p
-                      key={opt.optionValueId}
-                      className="text-[3vw] text-(--text-secondary)"
-                    >
-                      + {opt.optionValueName} ({opt.extraPrice}원)
-                    </p>
-                  ))}
-                </div>
-
-                <p className="text-[4vw] font-semibold text-(--text-primary)">
-                  {item.lineTotalPrice.toLocaleString()}원
+          {cart.map((item) => (
+            <div
+              key={item.orderDetailId}
+              className="flex items-center justify-between rounded-xl border px-[3vw] py-[2vh] shadow-sm"
+            >
+              <div>
+                <p className="text-[4vw] font-semibold">{item.menuName}</p>
+                <p className="text-[3vw] text-(--text-secondary)">
+                  {item.temperature} / {item.size}
                 </p>
+
+                {item.options.map((opt) => (
+                  <p
+                    key={opt.optionValueId}
+                    className="text-[3vw] text-(--text-secondary)"
+                  >
+                    + {opt.optionValueName} ({opt.extraPrice}원)
+                  </p>
+                ))}
               </div>
-            ))}
-          </div>
-          {/* 총 금액 */}
-          <div className="mt-[4vh] flex items-center justify-between border-t border-(--border-light) pt-[3vh]">
-            <p className="text-[4vw] text-(--text-primary)">총 결제 금액</p>
-            <p className="text-[5vw] font-bold text-(--text-primary)">
+
+              <p className="text-[4vw] font-semibold">
+                {item.lineTotalPrice.toLocaleString()}원
+              </p>
+            </div>
+          ))}
+
+          <div className="mt-[4vh] flex items-center justify-between border-t pt-[3vh]">
+            <p className="text-[4vw]">총 결제 금액</p>
+            <p className="text-[5vw] font-bold">
               {totalPrice?.toLocaleString()}원
             </p>
           </div>
-          /{/* 최종 주문 확정 */}
+
           <button
-            onClick={handleConfirmOrder}
-            className="mt-[2vh] w-full rounded-xl bg-(--color-primary) py-[2.4vh] text-[4.5vw] font-semibold text-(--text-inverse) shadow-md active:scale-95"
+            onClick={handleNext}
+            className="mt-[2vh] w-full rounded-xl bg-(--color-primary) py-[2.4vh] text-[4.5vw] font-semibold text-white shadow-md active:scale-95"
           >
-            주문 확정하기
+            다음으로
           </button>
         </div>
       </div>
 
-      {/* FOOTER */}
-      <div className="flex h-[10vh] w-full items-center justify-between border-t border-(--border-light) bg-white px-[4vw]">
+      <div className="flex h-[10vh] items-center justify-between border-t bg-white px-[4vw]">
         <button
           onClick={() => {
             stopTTS();
             navigate(-1);
           }}
-          className="text-[5vw] text-(--text-primary)"
+          className="text-[5vw]"
         >
           ← 이전
         </button>
 
-        <button className="rounded-xl bg-(--accent) px-[6vw] py-[2vh] text-[5vw] text-(--text-inverse) shadow-sm">
+        <button className="rounded-xl bg-(--accent) px-[6vw] py-[2vh] text-[5vw] text-white">
           직원 호출
         </button>
       </div>

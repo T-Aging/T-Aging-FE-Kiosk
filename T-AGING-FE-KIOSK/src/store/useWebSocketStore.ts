@@ -9,12 +9,13 @@ import type {
   RecentOrdersResponse,
   QrLoginResponse,
   PhoneNumLoginResponse,
+  OrderConfirmResponse,
 } from "@/types/KioskResponse";
 
 interface KioskState {
   socket: WebSocket | null;
   sessionId: string | null;
-  lastReply: ConverseResponse | QrLoginResponse | PhoneNumLoginResponse | null;
+  lastReply: ConverseResponse | QrLoginResponse | PhoneNumLoginResponse | OrderConfirmResponse| null;
   isVoiceStage: boolean;
   orderCompleteMessage: string | null;
   currentStep: string | null;
@@ -228,6 +229,7 @@ export const useKioskStore = create<KioskState>((set, get) => ({
         case "order_confirm":
           set({
             currentStep: "order_confirm",
+            lastReply: typedMsg,
             cart: typedMsg.items,
             totalPrice: typedMsg.totalPrice
           });
