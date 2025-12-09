@@ -45,41 +45,27 @@ const ConversationalOrder = () => {
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
+  // 옵션 안내 플래그
+  const [optionIntroSpoken, setOptionIntroSpoken] = useState(false);
+
   useEffect(() => {
     setTitle("대화 주문");
   }, [setTitle]);
 
-  // =============================
-  // 선택 버튼을 눌렀을 때 채팅 메시지 추가 + bot follow-up + 기존 TTS 종료
-  // =============================
+  // 선택 버튼 로직 (follow 제거됨)
   const handleChoiceSelect = async (label: string, callback: () => void) => {
-    // 사용자 메시지 추가
     setMessages((prev) => [
       ...prev,
       { id: Date.now(), sender: "user", text: label },
     ]);
 
-    // 현재 재생 중인 TTS 종료 (지원 시)
     if (window.speechSynthesis) window.speechSynthesis.cancel();
 
-    // 기존 선택 로직 실행 (온도/사이즈/옵션 등)
     callback();
-
-    // follow-up bot 메시지
-    const follow = "선택하셨어요!";
-
-    setMessages((prev) => [
-      ...prev,
-      { id: Date.now() + 1, sender: "bot", text: follow },
-    ]);
-
-    playTTS(follow);
   };
 
   // converse 응답 처리
   useEffect(() => {
-    if (!lastReply) return;
-
     if (!lastReply || lastReply.type !== "converse") return;
 
     const res = lastReply as ConverseResponse;
@@ -95,11 +81,10 @@ const ConversationalOrder = () => {
     else setRecommendedItems([]);
   }, [lastReply, playTTS]);
 
-  // 옵션/온도/사이즈 등을 묻는 질문을 채팅 메시지로 자동 추가
+  // 질문 표시 + TTS
   useEffect(() => {
     if (!currentStep || !currentQuestion) return;
 
-    // 이미 같은 질문이 있으면 중복 추가 방지
     setMessages((prev) => {
       const exists = prev.some((m) => m.text === currentQuestion);
       if (exists) return prev;
@@ -110,7 +95,6 @@ const ConversationalOrder = () => {
       ];
     });
 
-    // 질문을 음성으로 읽기
     playTTS(currentQuestion);
   }, [currentStep, currentQuestion, playTTS]);
 
@@ -170,7 +154,7 @@ const ConversationalOrder = () => {
     setTimeout(() => recorder.stop(), 3000);
   };
 
-  // 사용자 메시지 전송
+  // 사용자 텍스트 입력
   const handleUserMessage = (msg: string) => {
     setMessages((prev) => [
       ...prev,
@@ -180,7 +164,7 @@ const ConversationalOrder = () => {
     setRecommendedItems([]);
   };
 
-  // 주문 완료 후 초기화
+  // 주문 초기화
   const resetForNewOrder = () => {
     setMessages([
       {
@@ -197,12 +181,15 @@ const ConversationalOrder = () => {
       optionGroups: null,
       isVoiceStage: true,
     });
+
+    setOptionIntroSpoken(false);
   };
 
   // BottomSheet 렌더링
   const renderBottomSheet = () => {
     if (!currentStep) return null;
 
+    // 온도 선택
     if (currentStep === "ask_temperature") {
       return (
         <BottomSheet title={currentQuestion ?? ""}>
@@ -218,6 +205,7 @@ const ConversationalOrder = () => {
       );
     }
 
+    // 사이즈 선택
     if (currentStep === "ask_size") {
       return (
         <BottomSheet title={currentQuestion ?? ""}>
@@ -233,6 +221,7 @@ const ConversationalOrder = () => {
       );
     }
 
+    // 옵션 여부 선택
     if (currentStep === "ask_detail_option_yn") {
       return (
         <BottomSheet title={currentQuestion ?? ""}>
@@ -248,9 +237,27 @@ const ConversationalOrder = () => {
       );
     }
 
+    // 옵션 목록
     if (currentStep === "show_detail_options") {
-      const group = optionGroups?.[currentOptionGroupIndex];
-      if (!group) return null;
+      // 옵션 자체가 없는 경우
+      if (!optionGroups || optionGroups.length === 0) {
+        nextOptionGroup(null);
+        return null;
+      }
+
+      const group = optionGroups[currentOptionGroupIndex];
+
+      // 현재 옵션 그룹에 옵션이 0개인 경우 자동 패스
+      if (!group || group.options.length === 0) {
+        nextOptionGroup(null);
+        return null;
+      }
+
+      // 첫 진입 시 "총 N개의 옵션이 있어요" 안내
+      if (!optionIntroSpoken) {
+        playTTS(`이 메뉴는 총 ${optionGroups.length}개의 옵션이 있어요.`);
+        setOptionIntroSpoken(true);
+      }
 
       return (
         <BottomSheet title={`옵션 선택: ${group.groupName}`}>
@@ -273,12 +280,13 @@ const ConversationalOrder = () => {
           />
 
           <p className="mt-[2vh] text-center text-[3.2vw] text-(--text-secondary)">
-            {currentOptionGroupIndex + 1} / {optionGroups?.length} 단계
+            {currentOptionGroupIndex + 1} / {optionGroups.length} 단계
           </p>
         </BottomSheet>
       );
     }
 
+    // 주문 아이템 담김
     if (currentStep === "order_item_complete") {
       return (
         <BottomSheet title="주문이 담겼습니다">
@@ -301,6 +309,7 @@ const ConversationalOrder = () => {
       );
     }
 
+    // 장바구니
     if (currentStep === "cart") {
       const { cart, totalPrice } = useKioskStore.getState();
 
@@ -355,6 +364,7 @@ const ConversationalOrder = () => {
                   optionGroups: null,
                   isVoiceStage: true,
                 });
+                setOptionIntroSpoken(false);
               }}
             >
               더 주문할게요
