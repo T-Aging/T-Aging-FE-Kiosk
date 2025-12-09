@@ -122,10 +122,7 @@ const ConversationalOrder = () => {
     if (safeText.length > 0) {
       playTTS(safeText);
     }
-  }, [
-    currentStep,
-    currentQuestion,
-  ]); /* eslint-disable-line react-hooks/exhaustive-deps */
+  }, [currentQuestion, playTTS]);
 
   /* 스크롤 아래 유지 */
   useEffect(() => {
@@ -143,6 +140,9 @@ const ConversationalOrder = () => {
       type: "order_start",
       data: { menuName },
     });
+
+    /* 메뉴 선택 시에만 마이크 숨김 */
+    useKioskStore.setState({ isVoiceStage: false });
 
     setRecommendedItems([]);
     setCanRetryConverse(false);
@@ -235,7 +235,6 @@ const ConversationalOrder = () => {
   const renderBottomSheet = () => {
     if (!currentStep) return null;
 
-    /* 온도 */
     if (currentStep === "ask_temperature") {
       return (
         <BottomSheet title={currentQuestion ?? ""}>
@@ -251,7 +250,6 @@ const ConversationalOrder = () => {
       );
     }
 
-    /* 사이즈 */
     if (currentStep === "ask_size") {
       return (
         <BottomSheet title={currentQuestion ?? ""}>
@@ -267,7 +265,6 @@ const ConversationalOrder = () => {
       );
     }
 
-    /* 옵션 여부 */
     if (currentStep === "ask_detail_option_yn") {
       return (
         <BottomSheet title={currentQuestion ?? ""}>
@@ -283,7 +280,6 @@ const ConversationalOrder = () => {
       );
     }
 
-    /* 옵션 선택 */
     if (currentStep === "show_detail_options") {
       if (!optionGroups || optionGroups.length === 0) {
         nextOptionGroup(null);
@@ -329,7 +325,6 @@ const ConversationalOrder = () => {
       );
     }
 
-    /* 담김 */
     if (currentStep === "order_item_complete") {
       return (
         <BottomSheet title="주문이 담겼습니다">
@@ -352,7 +347,6 @@ const ConversationalOrder = () => {
       );
     }
 
-    /* 장바구니 */
     if (currentStep === "cart") {
       const { cart, totalPrice } = useKioskStore.getState();
 
