@@ -55,7 +55,6 @@ const OrderConfirmation = () => {
           <p className="mb-[3vh] text-[5vw] font-semibold text-(--text-primary)">
             주문 내역
           </p>
-
           <div className="flex flex-col gap-[2vh]">
             {cart.map((item) => (
               <div
@@ -87,7 +86,6 @@ const OrderConfirmation = () => {
               </div>
             ))}
           </div>
-
           {/* 총 금액 */}
           <div className="mt-[4vh] flex items-center justify-between border-t border-(--border-light) pt-[3vh]">
             <p className="text-[4vw] text-(--text-primary)">총 결제 금액</p>
@@ -95,19 +93,7 @@ const OrderConfirmation = () => {
               {totalPrice?.toLocaleString()}원
             </p>
           </div>
-
-          {/* 옵션 수정 */}
-          <button
-            onClick={() => {
-              stopTTS();
-              navigate("/order");
-            }}
-            className="mt-[3vh] w-full rounded-xl border border-(--border-light) bg-white py-[2.2vh] text-[4vw] text-(--text-primary) shadow-sm active:scale-95"
-          >
-            옵션 수정하기
-          </button>
-
-          {/* 최종 주문 확정 */}
+          /{/* 최종 주문 확정 */}
           <button
             onClick={handleConfirmOrder}
             className="mt-[2vh] w-full rounded-xl bg-(--color-primary) py-[2.4vh] text-[4.5vw] font-semibold text-(--text-inverse) shadow-md active:scale-95"
