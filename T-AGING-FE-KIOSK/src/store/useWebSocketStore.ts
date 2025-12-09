@@ -53,7 +53,6 @@ interface KioskState {
 
   sendSessionEnd: () => void;
 
-  /* 🔥 추가됨: 모든 상태 초기화 */
   resetState: () => void;
 }
 
@@ -90,11 +89,7 @@ export const useKioskStore = create<KioskState>((set, get) => ({
     const ws = new WebSocket(import.meta.env.VITE_WS_URL);
 
     ws.onopen = () => {
-      const startMsg: KioskRequest = {
-        type: "start",
-        data: { storeId: "001", menuVersion: 1 }
-      };
-      ws.send(JSON.stringify(startMsg));
+      console.log("WebSocket 연결 성공");
     };
 
     ws.onmessage = (event) => {
@@ -411,6 +406,7 @@ export const useKioskStore = create<KioskState>((set, get) => ({
       isVoiceStage: false
     });
   },
+
 
   resetState: () =>
     set({

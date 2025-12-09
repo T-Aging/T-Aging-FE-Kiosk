@@ -110,7 +110,7 @@ const ConversationalOrder = () => {
     }
 
     if (safeText) playTTS(safeText);
-  }, [currentQuestion, playTTS]);
+  }, [currentStep, currentQuestion, messages, playTTS]);
 
   /* 스크롤 자동 */
   useEffect(() => {

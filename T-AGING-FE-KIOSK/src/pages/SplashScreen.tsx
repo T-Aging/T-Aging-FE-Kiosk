@@ -9,20 +9,18 @@ const SplashScreen = () => {
   const { setTitle } = useOutletContext<{ setTitle: (v: string) => void }>();
 
   const { playTTS, stopTTS } = useTTS();
-  const connect = useKioskStore((s) => s.connect);
-  const sessionId = useKioskStore((s) => s.sessionId);
-  // 중복 클릭 방지
+
+  const sendMessage = useKioskStore((s) => s.sendMessage);
+  const socket = useKioskStore((s) => s.socket);
+
   const startedRef = useRef(false);
 
   useEffect(() => {
     setTitle("마실이 키오스크");
-
-    // Splash는 재생만 하고, WebSocket 연결은 App 최상단에서 한다.
     playTTS("마실이 키오스크에 오신 걸 환영합니다!");
-    if (!sessionId) connect();
 
     return () => stopTTS();
-  }, [setTitle, playTTS, stopTTS, sessionId, connect]);
+  }, [setTitle, playTTS, stopTTS]);
 
   const handleStart = () => {
     if (startedRef.current) return;
@@ -30,13 +28,20 @@ const SplashScreen = () => {
 
     stopTTS();
 
-    // 연결(connect())은 App.tsx에서 이미 수행됨
+    // socket이 열려 있을 때만 start 전송
+    if (socket?.readyState === WebSocket.OPEN) {
+      sendMessage({
+        type: "start",
+        data: { storeId: "001", menuVersion: 1 },
+      });
+    }
+
+    // 바로 membership으로 이동
     navigate("/membership");
   };
 
   return (
     <div className="relative flex h-full w-full flex-col bg-(--bg-primary)">
-      {/* CONTENT */}
       <div className="flex flex-1 flex-col items-center justify-center">
         <img src={masil} alt="masil-logo" className="mb-6 h-[60vw] w-[60vw]" />
 
@@ -56,7 +61,6 @@ const SplashScreen = () => {
         </button>
       </div>
 
-      {/* FOOTER */}
       <footer className="flex h-[10vh] w-full items-center justify-start pl-[3vw] text-[4.5vw] text-(--text-tertiary)">
         🔊 음성 안내 중입니다
       </footer>
