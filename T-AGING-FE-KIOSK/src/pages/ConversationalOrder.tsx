@@ -48,6 +48,9 @@ const ConversationalOrder = () => {
   // 옵션 안내 플래그
   const [optionIntroSpoken, setOptionIntroSpoken] = useState(false);
 
+  // 추천 메뉴가 떠 있고 아직 선택하지 않은 상태에서 "다시 말하기" 버튼을 노출하기 위한 플래그
+  const [canRetryConverse, setCanRetryConverse] = useState(false);
+
   useEffect(() => {
     setTitle("대화 주문");
   }, [setTitle]);
@@ -70,6 +73,7 @@ const ConversationalOrder = () => {
 
     const res = lastReply as ConverseResponse;
 
+    // 챗 메시지 추가
     setMessages((prev) => [
       ...prev,
       { id: Date.now(), sender: "bot", text: res.reply },
@@ -77,8 +81,15 @@ const ConversationalOrder = () => {
 
     playTTS(res.reply);
 
-    if (res.items && res.items.length > 0) setRecommendedItems(res.items);
-    else setRecommendedItems([]);
+    // 추천 메뉴 세팅
+    if (res.items && res.items.length > 0) {
+      setRecommendedItems(res.items);
+      // 추천 메뉴가 노출된 상태에서 바로 다시 말하기 버튼을 사용할 수 있음
+      setCanRetryConverse(true);
+    } else {
+      setRecommendedItems([]);
+      setCanRetryConverse(false);
+    }
   }, [lastReply, playTTS]);
 
   // 질문 표시 + TTS
@@ -116,6 +127,7 @@ const ConversationalOrder = () => {
     });
 
     setRecommendedItems([]);
+    setCanRetryConverse(false);
   };
 
   // 음성 녹음
@@ -160,8 +172,26 @@ const ConversationalOrder = () => {
       ...prev,
       { id: Date.now(), sender: "user", text: msg },
     ]);
+
     sendConverse(msg);
     setRecommendedItems([]);
+    setCanRetryConverse(false);
+  };
+
+  // 추천 메뉴 아래 선택 없이 "다시 말하기" 눌렀을 때 동작
+  const retryConverse = () => {
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: Date.now(),
+        sender: "bot",
+        text: "어떤 메뉴를 원하시나요? 다시 말씀해주세요!",
+      },
+    ]);
+
+    playTTS("어떤 메뉴를 원하시나요? 다시 말씀해주세요!");
+    setRecommendedItems([]);
+    setCanRetryConverse(false);
   };
 
   // 주문 초기화
@@ -185,7 +215,7 @@ const ConversationalOrder = () => {
     setOptionIntroSpoken(false);
   };
 
-  // BottomSheet 렌더링
+  // BottomSheet 렌더링 (온도 / 사이즈 / 옵션 등)
   const renderBottomSheet = () => {
     if (!currentStep) return null;
 
@@ -239,7 +269,6 @@ const ConversationalOrder = () => {
 
     // 옵션 목록
     if (currentStep === "show_detail_options") {
-      // 옵션 자체가 없는 경우
       if (!optionGroups || optionGroups.length === 0) {
         nextOptionGroup(null);
         return null;
@@ -247,13 +276,11 @@ const ConversationalOrder = () => {
 
       const group = optionGroups[currentOptionGroupIndex];
 
-      // 현재 옵션 그룹에 옵션이 0개인 경우 자동 패스
       if (!group || group.options.length === 0) {
         nextOptionGroup(null);
         return null;
       }
 
-      // 첫 진입 시 "총 N개의 옵션이 있어요" 안내
       if (!optionIntroSpoken) {
         playTTS(`이 메뉴는 총 ${optionGroups.length}개의 옵션이 있어요.`);
         setOptionIntroSpoken(true);
@@ -286,7 +313,7 @@ const ConversationalOrder = () => {
       );
     }
 
-    // 주문 아이템 담김
+    // 주문 담김
     if (currentStep === "order_item_complete") {
       return (
         <BottomSheet title="주문이 담겼습니다">
@@ -387,6 +414,7 @@ const ConversationalOrder = () => {
   return (
     <div className="relative flex h-full w-full flex-col bg-(--bg-primary)">
       <div className="flex flex-1 flex-col items-center overflow-hidden px-[4vw] pt-[6vh]">
+        {/* 기본 안내 */}
         <div className="mb-[4vh] flex items-center gap-[3vw]">
           <img src={masil} alt="masil" className="h-auto w-[22vw]" />
           <div className="rounded-2xl border bg-white px-[5vw] py-[2vh] text-[4vw] shadow-md">
@@ -394,6 +422,7 @@ const ConversationalOrder = () => {
           </div>
         </div>
 
+        {/* 메시지 영역 */}
         <div className="w-full flex-1 overflow-y-auto px-[1vw] pb-[2vh]">
           {messages.map((m) => (
             <div
@@ -416,11 +445,23 @@ const ConversationalOrder = () => {
           <div ref={bottomRef} />
         </div>
 
+        {/* 추천 메뉴와 다시 말하기 버튼 영역 */}
         {recommendedItems.length > 0 && (
           <div className="mt-[3vh] w-full px-[2vw]">
+            {/* 여기에 추가된 로직: 선택 전 상태에서 다시 말하기 버튼 배치 */}
+            {canRetryConverse && (
+              <button
+                onClick={retryConverse}
+                className="mb-[2vh] w-full rounded-xl bg-(--accent) px-[4vw] py-[2vh] text-[4vw] text-white shadow-md active:scale-95"
+              >
+                다시 말하기
+              </button>
+            )}
+
             <p className="mb-[2vh] text-center text-[4vw] font-semibold">
               아래에서 메뉴를 선택해보세요!
             </p>
+
             <div className="grid grid-cols-2 gap-[3vw]">
               {recommendedItems.map((item) => (
                 <button
@@ -443,6 +484,7 @@ const ConversationalOrder = () => {
           </div>
         )}
 
+        {/* 기본 음성 녹음 버튼 */}
         {isVoiceStage && (
           <>
             <button
@@ -483,7 +525,7 @@ const ConversationalOrder = () => {
 
 export default ConversationalOrder;
 
-// BottomSheet
+/* BottomSheet */
 const BottomSheet = ({
   title,
   children,
@@ -497,7 +539,7 @@ const BottomSheet = ({
   </div>
 );
 
-// Choice button
+/* Choice button */
 const ChoiceButton = ({
   label,
   onClick,
