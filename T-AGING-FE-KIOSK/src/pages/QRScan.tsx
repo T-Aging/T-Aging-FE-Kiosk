@@ -60,7 +60,8 @@ const QRScan = () => {
   useEffect(() => {
     if (!lastReply) return;
 
-    if ("login_success" in lastReply) {
+    // QR 로그인 응답만 처리
+    if (lastReply.type === "qr_login") {
       if (lastReply.login_success) {
         navigate("/recent-orders");
       } else {

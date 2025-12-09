@@ -7,37 +7,28 @@ import type {
   ConverseResponse,
   RecentOrderDetailResponse,
   RecentOrdersResponse,
+  QrLoginResponse,
+  PhoneNumLoginResponse,
 } from "@/types/KioskResponse";
 
 interface KioskState {
   socket: WebSocket | null;
   sessionId: string | null;
-
-  lastReply: ConverseResponse | null;
-
+  lastReply: ConverseResponse | QrLoginResponse | PhoneNumLoginResponse | null;
   isVoiceStage: boolean;
-
   orderCompleteMessage: string | null;
-
   currentStep: string | null;
   currentQuestion: string | null;
   choices: string[] | null;
-
   menuName: string | null;
   temperature: string | null;
   size: string | null;
-
   optionGroups: OptionGroup[] | null;
-
   currentOptionGroupIndex: number;
-
   selectedOptionIds: number[];
-
   cart: CartItem[];
   totalPrice: number | null;
-
   recentOrders: RecentOrdersResponse["orders"] | null;
-
   recentOrderDetail: RecentOrderDetailResponse | null;
 
   connect: () => void;
@@ -49,7 +40,6 @@ interface KioskState {
   selectDetailOptionYn: (answer: string) => void;
 
   nextOptionGroup: (selectedOptionId: number | null) => void;
-
   selectDetailOptions: (selected: number[]) => void;
 
   getCart: () => void;
@@ -57,9 +47,7 @@ interface KioskState {
   orderConfirm: () => void;
 
   getRecentOrders: () => void;
-
   getRecentOrderDetail: (orderId: number) => void;
-
   recentOrderToCart: (orderId: number) => void;
 
   sendSessionEnd: () => void;
@@ -68,7 +56,6 @@ interface KioskState {
 export const useKioskStore = create<KioskState>((set, get) => ({
   socket: null,
   sessionId: null,
-
   lastReply: null,
 
   isVoiceStage: true,
@@ -91,7 +78,6 @@ export const useKioskStore = create<KioskState>((set, get) => ({
   totalPrice: null,
 
   recentOrders: null,
-
   recentOrderDetail: null,
 
   connect: () => {
@@ -111,12 +97,13 @@ export const useKioskStore = create<KioskState>((set, get) => ({
       const msg = JSON.parse(event.data);
       console.log("WS Response:", msg);
 
-      if (
-        typeof msg === "object" &&
-        msg !== null &&
-        msg.type === "phone_num_login"
-      ) {
-        set({ lastReply: msg });
+      if (msg.type === "qr_login") {
+        set({ lastReply: msg as QrLoginResponse });
+        return;
+      }
+
+      if (msg.type === "phone_num_login") {
+        set({ lastReply: msg as PhoneNumLoginResponse });
         return;
       }
 
@@ -323,7 +310,7 @@ export const useKioskStore = create<KioskState>((set, get) => ({
     });
   },
 
-  nextOptionGroup: (selectedOptionId: number | null) => {
+  nextOptionGroup: (selectedOptionId) => {
     const state = get();
 
     if (selectedOptionId !== null) {
@@ -394,14 +381,14 @@ export const useKioskStore = create<KioskState>((set, get) => ({
     });
   },
 
-  getRecentOrderDetail: (orderId: number) => {
+  getRecentOrderDetail: (orderId) => {
     get().sendMessage({
       type: "recent_order_detail",
       data: { orderId }
     });
   },
 
-  recentOrderToCart: (orderId: number) => {
+  recentOrderToCart: (orderId) => {
     get().sendMessage({
       type: "recent_order_to_cart",
       data: { orderId }

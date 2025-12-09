@@ -6,6 +6,14 @@ export interface PhoneNumLoginRequest {
   };
 }
 
+// QR 로그인 요청
+export interface QrLoginRequest {
+  type: "qr_login";
+  data: {
+    qrCode: string;
+  };
+}
+
 // start 요청
 export interface StartRequest {
   type: "start";
@@ -113,6 +121,7 @@ export interface SessionEndRequest {
 
 // 전체 Request 타입 묶기
 export type KioskRequest =
+  | QrLoginRequest
   | PhoneNumLoginRequest 
   | StartRequest
   | ConverseRequest

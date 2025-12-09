@@ -80,7 +80,9 @@ const ConversationalOrder = () => {
   useEffect(() => {
     if (!lastReply) return;
 
-    const res: ConverseResponse = lastReply;
+    if (!lastReply || lastReply.type !== "converse") return;
+
+    const res = lastReply as ConverseResponse;
 
     setMessages((prev) => [
       ...prev,

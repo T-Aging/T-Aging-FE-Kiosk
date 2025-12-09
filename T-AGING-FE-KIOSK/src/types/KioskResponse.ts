@@ -1,3 +1,12 @@
+// QR 로그인 응답 타입
+export interface QrLoginResponse {
+  type: "qr_login";
+  login_success: boolean;
+  message: string;
+  userId: number;
+  username: string;
+}
+
 // 전화번호 로그인 응답 타입
 export interface PhoneNumLoginResponse {
   type: "phone_num_login";
@@ -243,4 +252,5 @@ export type KioskResponse =
   | RecentOrderDetailResponse
   | RecentOrderToCartResponse
   | SessionEndedResponse
+  | QrLoginResponse
   | PhoneNumLoginResponse;
