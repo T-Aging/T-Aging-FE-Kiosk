@@ -50,8 +50,7 @@ const RecentOrders = () => {
     recentOrderToCart(order.orderId);
 
     // recent_order_to_cart 응답이 오면 zustand에서 cart 업데이트됨
-    // cart 화면으로 이동
-    navigate("/cart");
+    navigate("/order/confirmation");
   };
 
   // 상세보기 요청 & 팝업 열기
