@@ -15,7 +15,7 @@ import type {
 interface KioskState {
   socket: WebSocket | null;
   sessionId: string | null;
-  lastReply: ConverseResponse | QrLoginResponse | PhoneNumLoginResponse | OrderConfirmResponse| null;
+  lastReply: ConverseResponse | QrLoginResponse | PhoneNumLoginResponse | OrderConfirmResponse | null;
   isVoiceStage: boolean;
   orderCompleteMessage: string | null;
   currentStep: string | null;
@@ -52,6 +52,9 @@ interface KioskState {
   recentOrderToCart: (orderId: number) => void;
 
   sendSessionEnd: () => void;
+
+  /* 🔥 추가됨: 모든 상태 초기화 */
+  resetState: () => void;
 }
 
 export const useKioskStore = create<KioskState>((set, get) => ({
@@ -407,5 +410,31 @@ export const useKioskStore = create<KioskState>((set, get) => ({
       currentStep: "session_end",
       isVoiceStage: false
     });
-  }
+  },
+
+  resetState: () =>
+    set({
+      lastReply: null,
+      isVoiceStage: true,
+
+      orderCompleteMessage: null,
+
+      currentStep: null,
+      currentQuestion: null,
+      choices: null,
+
+      menuName: null,
+      temperature: null,
+      size: null,
+      optionGroups: null,
+
+      currentOptionGroupIndex: 0,
+      selectedOptionIds: [],
+
+      cart: [],
+      totalPrice: null,
+
+      recentOrders: null,
+      recentOrderDetail: null,
+    }),
 }));
