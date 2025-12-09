@@ -25,7 +25,6 @@ const ConversationalOrder = () => {
     sendConverse,
     lastReply,
     isVoiceStage,
-
     currentStep,
     currentQuestion,
     choices,
@@ -37,38 +36,28 @@ const ConversationalOrder = () => {
 
   const { currentOptionGroupIndex, nextOptionGroup } = useKioskStore.getState();
 
-  /* 채팅 메시지 리스트 */
   const [messages, setMessages] = useState<Message[]>([
     { id: 1, text: "무엇을 도와드릴까요? 주문을 말씀해주세요!", sender: "bot" },
   ]);
 
-  /* 추천 메뉴 */
   const [recommendedItems, setRecommendedItems] = useState<ConverseItem[]>([]);
-
-  /* 음성 인식 상태 */
   const [isListening, setIsListening] = useState(false);
-
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
-  /* 옵션 안내 문구 1회 출력 */
   const [optionIntroSpoken, setOptionIntroSpoken] = useState(false);
-
-  /* 추천 메뉴가 떠 있을 때 '다시 말하기' 버튼 노출 여부 */
   const [canRetryConverse, setCanRetryConverse] = useState(false);
 
-  /* title 지정 */
   useEffect(() => {
     setTitle("대화 주문");
   }, [setTitle]);
 
   /* 버튼 선택 처리 */
   const handleChoiceSelect = (label: string, callback: () => void) => {
-    setMessages((prev): Message[] => [
+    setMessages((prev) => [
       ...prev,
       { id: Date.now(), sender: "user", text: label },
     ]);
-
-    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    window.speechSynthesis.cancel();
     callback();
   };
 
@@ -78,14 +67,13 @@ const ConversationalOrder = () => {
 
     const res = lastReply as ConverseResponse;
 
-    setMessages((prev): Message[] => [
+    setMessages((prev) => [
       ...prev,
       { id: Date.now(), sender: "bot", text: res.reply },
     ]);
-
     playTTS(res.reply);
 
-    if (res.items && res.items.length > 0) {
+    if (Array.isArray(res.items) && res.items.length > 0) {
       setRecommendedItems(res.items);
       setCanRetryConverse(true);
     } else {
@@ -94,44 +82,44 @@ const ConversationalOrder = () => {
     }
   }, [lastReply, playTTS]);
 
-  /* 옵션 단계에서는 currentQuestion을 읽지 않음 */
+  /* converse 응답 오면 마이크 자동 활성화 */
+  useEffect(() => {
+    if (lastReply?.type === "converse") {
+      useKioskStore.setState({ isVoiceStage: true });
+    }
+  }, [lastReply]);
+
+  /* 질문 출력 */
   const shouldSpeakQuestion = () => {
     if (!currentStep || !currentQuestion) return false;
     if (currentStep === "show_detail_options") return false;
     return true;
   };
 
-  /* 질문 출력 */
   useEffect(() => {
     if (!shouldSpeakQuestion()) return;
 
     const safeText = currentQuestion ?? "";
-
     const exists = messages.some((m) => m.text === safeText);
+
     if (!exists) {
-      setMessages((prev): Message[] => [
+      setMessages((prev) => [
         ...prev,
-        {
-          id: Date.now(),
-          sender: "bot",
-          text: safeText,
-        },
+        { id: Date.now(), sender: "bot", text: safeText },
       ]);
     }
 
-    if (safeText.length > 0) {
-      playTTS(safeText);
-    }
+    if (safeText) playTTS(safeText);
   }, [currentQuestion, playTTS]);
 
-  /* 스크롤 아래 유지 */
+  /* 스크롤 자동 */
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   /* 추천 메뉴 선택 */
   const startOrder = (menuName: string) => {
-    setMessages((prev): Message[] => [
+    setMessages((prev) => [
       ...prev,
       { id: Date.now(), sender: "user", text: `${menuName} 선택` },
     ]);
@@ -141,9 +129,7 @@ const ConversationalOrder = () => {
       data: { menuName },
     });
 
-    /* 메뉴 선택 시에만 마이크 숨김 */
     useKioskStore.setState({ isVoiceStage: false });
-
     setRecommendedItems([]);
     setCanRetryConverse(false);
   };
@@ -151,14 +137,11 @@ const ConversationalOrder = () => {
   /* 음성 녹음 */
   const startRecording = async () => {
     setIsListening(true);
-
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     const recorder = new MediaRecorder(stream);
     const chunks: BlobPart[] = [];
 
-    recorder.ondataavailable = (e) => {
-      chunks.push(e.data);
-    };
+    recorder.ondataavailable = (e) => chunks.push(e.data);
 
     recorder.onstop = async () => {
       setIsListening(false);
@@ -167,7 +150,7 @@ const ConversationalOrder = () => {
 
       if (text) handleUserMessage(text);
       else {
-        setMessages((prev): Message[] => [
+        setMessages((prev) => [
           ...prev,
           {
             id: Date.now(),
@@ -182,9 +165,8 @@ const ConversationalOrder = () => {
     setTimeout(() => recorder.stop(), 3000);
   };
 
-  /* 사용자 입력 */
   const handleUserMessage = (msg: string) => {
-    setMessages((prev): Message[] => [
+    setMessages((prev) => [
       ...prev,
       { id: Date.now(), sender: "user", text: msg },
     ]);
@@ -196,7 +178,7 @@ const ConversationalOrder = () => {
 
   /* 추천 재시도 */
   const retryConverse = () => {
-    setMessages((prev): Message[] => [
+    setMessages((prev) => [
       ...prev,
       {
         id: Date.now(),
@@ -204,11 +186,37 @@ const ConversationalOrder = () => {
         text: "어떤 메뉴를 원하시나요? 다시 말씀해주세요!",
       },
     ]);
-
     playTTS("어떤 메뉴를 원하시나요? 다시 말씀해주세요!");
     setRecommendedItems([]);
     setCanRetryConverse(false);
   };
+
+  /* 옵션 자동 이동 안전 처리 (무한루프 방지 핵심) */
+  useEffect(() => {
+    if (currentStep !== "show_detail_options") return;
+
+    if (!optionGroups || optionGroups.length === 0) {
+      nextOptionGroup(null);
+      return;
+    }
+
+    const group = optionGroups[currentOptionGroupIndex];
+
+    if (!group || group.options.length === 0) {
+      nextOptionGroup(null);
+      return;
+    }
+  }, [currentStep, optionGroups, currentOptionGroupIndex]);
+
+  /* 쇼 옵션 들어오면 최초 1회 안내 멘트 */
+  useEffect(() => {
+    if (currentStep === "show_detail_options" && !optionIntroSpoken) {
+      if (optionGroups?.length) {
+        playTTS(`이 메뉴는 총 ${optionGroups.length}개의 옵션이 있어요.`);
+        setOptionIntroSpoken(true);
+      }
+    }
+  }, [currentStep, optionGroups, optionIntroSpoken, playTTS]);
 
   /* 주문 초기화 */
   const resetForNewOrder = () => {
@@ -231,7 +239,7 @@ const ConversationalOrder = () => {
     setOptionIntroSpoken(false);
   };
 
-  /* 옵션 BottomSheet */
+  /* 바텀시트 렌더링 */
   const renderBottomSheet = () => {
     if (!currentStep) return null;
 
@@ -281,22 +289,8 @@ const ConversationalOrder = () => {
     }
 
     if (currentStep === "show_detail_options") {
-      if (!optionGroups || optionGroups.length === 0) {
-        nextOptionGroup(null);
-        return null;
-      }
-
-      const group = optionGroups[currentOptionGroupIndex];
-
-      if (!group || group.options.length === 0) {
-        nextOptionGroup(null);
-        return null;
-      }
-
-      if (!optionIntroSpoken) {
-        playTTS(`이 메뉴는 총 ${optionGroups.length}개의 옵션이 있어요.`);
-        setOptionIntroSpoken(true);
-      }
+      const group = optionGroups?.[currentOptionGroupIndex];
+      if (!group) return null;
 
       return (
         <BottomSheet title={`옵션 선택: ${group.groupName}`}>
@@ -306,7 +300,7 @@ const ConversationalOrder = () => {
               onClick={() =>
                 handleChoiceSelect(opt.name, () => nextOptionGroup(opt.id))
               }
-              className="mb-[1vh] w-full rounded-xl border bg-white px-[3vw] py-[2vh] text-left"
+              className="mb-[1vh] w-full rounded-xl border bg-white px-[3vw] py-[2vh] text-left text-[6vw]"
             >
               {opt.name} (+{opt.extraPrice}원)
             </button>
@@ -319,7 +313,7 @@ const ConversationalOrder = () => {
           />
 
           <p className="mt-[2vh] text-center text-[3.2vw] text-(--text-secondary)">
-            {currentOptionGroupIndex + 1} / {optionGroups.length} 단계
+            {currentOptionGroupIndex + 1} / {optionGroups?.length} 단계
           </p>
         </BottomSheet>
       );

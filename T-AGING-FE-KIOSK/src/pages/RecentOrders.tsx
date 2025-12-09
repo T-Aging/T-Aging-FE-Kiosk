@@ -83,7 +83,7 @@ const RecentOrders = () => {
           <div className="flex items-center">
             <img src={masil} alt="masil" className="mb-[1vh] h-auto w-[20vw]" />
             <div className="rounded-2xl border border-(--border-light) bg-white px-[5vw] py-[2vh] text-[5vw] text-(--text-primary) shadow-md">
-              최근에 주문했던 음료를 드릴까요?
+              최근에 주문했던 음료를 <br /> 드릴까요?
             </div>
           </div>
 
