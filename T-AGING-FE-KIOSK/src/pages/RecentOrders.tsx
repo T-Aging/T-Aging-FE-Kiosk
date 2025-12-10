@@ -170,20 +170,20 @@ const RecentOrders = () => {
       {showDetail && recentOrderDetail && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-[80vw] rounded-2xl bg-white p-[5vw] shadow-xl">
-            <p className="mb-[3vh] text-[6vw] font-semibold text-(--text-primary)">
+            <p className="mb-[1vh] text-[6vw] font-semibold text-(--text-primary)">
               {recentOrderDetail.items[0]?.menuName}
             </p>
 
-            <p className="text-[4vw] text-(--text-secondary)">
+            <p className="text-[5vw] text-(--text-secondary)">
               {new Date(recentOrderDetail.orderDateTime).toLocaleString()}
             </p>
 
             <div className="mt-[2vh] border-t border-(--border-light) pt-[2vh]">
               {recentOrderDetail.items.map((item) => (
                 <div key={item.orderDetailId} className="mb-[2vh]">
-                  <p className="text-[5vw] font-bold">{item.menuName}</p>
+                  <p className="text-[6vw] font-bold">{item.menuName}</p>
 
-                  <p className="text-[4vw]">
+                  <p className="text-[5vw]">
                     {item.temperature} / {item.size}
                   </p>
 
@@ -192,7 +192,7 @@ const RecentOrders = () => {
                       {item.options.map((op) => (
                         <p
                           key={op.optionValueId}
-                          className="text-[3.5vw] text-(--text-secondary)"
+                          className="text-[4vw] text-(--text-secondary)"
                         >
                           • {op.optionGroupName}: {op.optionValueName} (+
                           {op.extraPrice}원)
@@ -201,7 +201,7 @@ const RecentOrders = () => {
                     </div>
                   )}
 
-                  <p className="mt-[1vh] text-[4.5vw] font-semibold">
+                  <p className="mt-[2vh] text-[6vw] font-semibold">
                     {item.lineTotalPrice.toLocaleString()}원
                   </p>
                 </div>

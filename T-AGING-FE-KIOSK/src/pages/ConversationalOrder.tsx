@@ -47,6 +47,15 @@ const ConversationalOrder = () => {
   const [optionIntroSpoken, setOptionIntroSpoken] = useState(false);
   const [canRetryConverse, setCanRetryConverse] = useState(false);
 
+  /* TTS 중복 방지 */
+  const lastSpokenRef = useRef<string | null>(null);
+  const speakOnce = (text: string) => {
+    if (!text) return;
+    if (lastSpokenRef.current === text) return;
+    lastSpokenRef.current = text;
+    playTTS(text);
+  };
+
   useEffect(() => {
     setTitle("대화 주문");
   }, [setTitle]);
@@ -71,7 +80,7 @@ const ConversationalOrder = () => {
       ...prev,
       { id: Date.now(), sender: "bot", text: res.reply },
     ]);
-    playTTS(res.reply);
+    speakOnce(res.reply);
 
     if (Array.isArray(res.items) && res.items.length > 0) {
       setRecommendedItems(res.items);
@@ -80,7 +89,7 @@ const ConversationalOrder = () => {
       setRecommendedItems([]);
       setCanRetryConverse(false);
     }
-  }, [lastReply, playTTS]);
+  }, [lastReply]);
 
   /* converse 응답 오면 마이크 자동 활성화 */
   useEffect(() => {
@@ -109,8 +118,8 @@ const ConversationalOrder = () => {
       ]);
     }
 
-    if (safeText) playTTS(safeText);
-  }, [currentStep, currentQuestion, messages, playTTS]);
+    if (safeText) speakOnce(safeText);
+  }, [currentStep, currentQuestion, messages]);
 
   /* 스크롤 자동 */
   useEffect(() => {
@@ -186,12 +195,12 @@ const ConversationalOrder = () => {
         text: "어떤 메뉴를 원하시나요? 다시 말씀해주세요!",
       },
     ]);
-    playTTS("어떤 메뉴를 원하시나요? 다시 말씀해주세요!");
+    speakOnce("어떤 메뉴를 원하시나요? 다시 말씀해주세요!");
     setRecommendedItems([]);
     setCanRetryConverse(false);
   };
 
-  /* 옵션 자동 이동 안전 처리 (무한루프 방지 핵심) */
+  /* 옵션 자동 이동 안전 처리 */
   useEffect(() => {
     if (currentStep !== "show_detail_options") return;
 
@@ -212,11 +221,11 @@ const ConversationalOrder = () => {
   useEffect(() => {
     if (currentStep === "show_detail_options" && !optionIntroSpoken) {
       if (optionGroups?.length) {
-        playTTS(`이 메뉴는 총 ${optionGroups.length}개의 옵션이 있어요.`);
+        speakOnce(`이 메뉴는 총 ${optionGroups.length}개의 옵션이 있어요.`);
         setOptionIntroSpoken(true);
       }
     }
-  }, [currentStep, optionGroups, optionIntroSpoken, playTTS]);
+  }, [currentStep, optionGroups, optionIntroSpoken]);
 
   /* 주문 초기화 */
   const resetForNewOrder = () => {
@@ -349,44 +358,39 @@ const ConversationalOrder = () => {
           {cart.map((item) => (
             <div
               key={item.orderDetailId}
-              className="relative mb-[2vh] rounded-xl border bg-white p-[3vw]"
+              className="relative mb-[1vh] rounded-2xl border bg-white p-[5vw]" /* 카드 전체 확대 */
             >
               <button
                 onClick={() =>
                   useKioskStore.getState().deleteCartItem(item.orderDetailId)
                 }
-                className="absolute top-[2vw] right-[2vw] text-[3.5vw] text-red-500"
+                className="absolute top-[10vh] right-[4vw] text-[7vw] font-bold text-red-500" /* 삭제 버튼 위치/크기 조정 */
               >
                 삭제
               </button>
-
-              <p className="text-[4vw] font-semibold">{item.menuName}</p>
-              <p className="text-[3.5vw]">
+              <p className="text-[6vw] font-semibold">{item.menuName}</p>
+              <p className="mt-[1vw] text-[4.5vw]">
                 {item.temperature} / {item.size}
               </p>
-
               {item.options.map((opt) => (
                 <p
                   key={opt.optionValueId}
-                  className="text-[3vw] text-(--text-secondary)"
+                  className="mt-[0.5vw] text-[4vw] text-(--text-secondary)"
                 >
                   + {opt.optionValueName} ({opt.extraPrice}원)
                 </p>
               ))}
-
-              <p className="mt-[1vh] text-[4vw] font-semibold">
+              <p className="mt-[1vh] text-[6vw] font-bold">
                 {item.lineTotalPrice.toLocaleString()}원
               </p>
             </div>
           ))}
 
-          <p className="mt-[1vh] text-[4.5vw] font-bold">
-            총 금액: {totalPrice}원
-          </p>
+          <p className="mt-1 text-[8vw] font-bold">총 금액: {totalPrice}원</p>
 
           <div className="mt-[3vh] flex gap-[3vw]">
             <button
-              className="flex-1 rounded-xl bg-green-600 px-[4vw] py-[2vh] text-[4vw] text-white shadow-md active:scale-95"
+              className="flex-1 rounded-xl bg-green-600 px-[4vw] py-[2vh] text-[6vw] text-white shadow-md active:scale-95"
               onClick={() => {
                 useKioskStore.setState({
                   currentStep: null,
@@ -402,7 +406,7 @@ const ConversationalOrder = () => {
             </button>
 
             <button
-              className="flex-1 rounded-xl bg-blue-600 px-[4vw] py-[2vh] text-[4vw] text-white shadow-md active:scale-95"
+              className="flex-1 rounded-xl bg-blue-600 px-[4vw] py-[2vh] text-[6vw] text-white shadow-md active:scale-95"
               onClick={() => navigate("/order/confirmation")}
             >
               주문 완료
@@ -532,8 +536,8 @@ const BottomSheet = ({
   title: string;
   children: React.ReactNode;
 }) => (
-  <div className="fixed bottom-0 left-0 w-full rounded-t-3xl bg-white p-[4vw] shadow-xl">
-    <p className="mb-[3vw] text-[4.5vw] font-semibold">{title}</p>
+  <div className="fixed bottom-0 left-0 w-full rounded-t-3xl bg-white p-[5vw] shadow-xl">
+    <p className="mb-[3vw] text-[6vw] font-semibold">{title}</p>
     <div className="flex flex-col gap-[2vw]">{children}</div>
   </div>
 );
