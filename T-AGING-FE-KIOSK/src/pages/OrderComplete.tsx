@@ -45,7 +45,7 @@ const OrderComplete = () => {
       sendSessionEnd();
       resetState(); // 자동 이동 시 상태 초기화
       navigate("/");
-    }, 8000);
+    }, 10000);
   }, [lastReply, playTTS, stopTTS, sendSessionEnd, resetState, navigate]);
 
   // 버튼 클릭 → 처음 화면으로 이동
