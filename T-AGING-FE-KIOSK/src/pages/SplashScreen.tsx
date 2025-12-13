@@ -60,7 +60,7 @@ const SplashScreen = () => {
 
         <button
           onClick={handleStart}
-          className="rounded-xl bg-(--color-primary) px-12 py-4 text-[8vw] font-medium text-(--text-inverse) shadow-md transition active:scale-95"
+          className="rounded-4xl bg-(--color-primary) px-14 py-7 text-[8vw] font-medium text-(--text-inverse) shadow-md transition active:scale-95"
         >
           주문 시작하기
         </button>
