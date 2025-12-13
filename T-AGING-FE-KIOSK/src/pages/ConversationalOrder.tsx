@@ -7,7 +7,7 @@ import { useSTT } from "@/hooks/useSTT";
 import { useKioskStore } from "@/store/useWebSocketStore";
 import type { ConverseItem, ConverseResponse } from "@/types/KioskResponse";
 
-/* 메시지 타입 */
+// 메시지 타입
 type Message = {
   id: number;
   text: string;
@@ -32,9 +32,13 @@ const ConversationalOrder = () => {
     selectTemperature,
     selectSize,
     selectDetailOptionYn,
+    sendSessionEnd,
+    resetState,
   } = useKioskStore();
 
   const { currentOptionGroupIndex, nextOptionGroup } = useKioskStore.getState();
+
+  const scrollRef = useRef<HTMLDivElement | null>(null);
 
   const [messages, setMessages] = useState<Message[]>([
     { id: 1, text: "무엇을 도와드릴까요? 주문을 말씀해주세요!", sender: "bot" },
@@ -47,7 +51,7 @@ const ConversationalOrder = () => {
   const [optionIntroSpoken, setOptionIntroSpoken] = useState(false);
   const [canRetryConverse, setCanRetryConverse] = useState(false);
 
-  /* TTS 중복 방지 */
+  // TTS 중복 방지
   const lastSpokenRef = useRef<string | null>(null);
   const speakOnce = (text: string) => {
     if (!text) return;
@@ -60,7 +64,7 @@ const ConversationalOrder = () => {
     setTitle("대화 주문");
   }, [setTitle]);
 
-  /* 버튼 선택 처리 */
+  // 버튼 선택 처리
   const handleChoiceSelect = (label: string, callback: () => void) => {
     setMessages((prev) => [
       ...prev,
@@ -70,7 +74,7 @@ const ConversationalOrder = () => {
     callback();
   };
 
-  /* converse 응답 처리 */
+  // converse 응답 처리
   useEffect(() => {
     if (!lastReply || lastReply.type !== "converse") return;
 
@@ -91,14 +95,14 @@ const ConversationalOrder = () => {
     }
   }, [lastReply]);
 
-  /* converse 응답 오면 마이크 자동 활성화 */
+  // converse 응답 오면 마이크 자동 활성화
   useEffect(() => {
     if (lastReply?.type === "converse") {
       useKioskStore.setState({ isVoiceStage: true });
     }
   }, [lastReply]);
 
-  /* 질문 출력 */
+  // 질문 출력
   const shouldSpeakQuestion = () => {
     if (!currentStep || !currentQuestion) return false;
     if (currentStep === "show_detail_options") return false;
@@ -121,12 +125,12 @@ const ConversationalOrder = () => {
     if (safeText) speakOnce(safeText);
   }, [currentStep, currentQuestion, messages]);
 
-  /* 스크롤 자동 */
+  // 스크롤 자동
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  /* 추천 메뉴 선택 */
+  // 추천 메뉴 선택
   const startOrder = (menuName: string) => {
     setMessages((prev) => [
       ...prev,
@@ -143,7 +147,7 @@ const ConversationalOrder = () => {
     setCanRetryConverse(false);
   };
 
-  /* 음성 녹음 */
+  // 음성 녹음
   const startRecording = async () => {
     setIsListening(true);
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -185,7 +189,7 @@ const ConversationalOrder = () => {
     setCanRetryConverse(false);
   };
 
-  /* 추천 재시도 */
+  // 추천 재시도
   const retryConverse = () => {
     setMessages((prev) => [
       ...prev,
@@ -200,7 +204,7 @@ const ConversationalOrder = () => {
     setCanRetryConverse(false);
   };
 
-  /* 옵션 자동 이동 안전 처리 */
+  // 옵션 자동 이동 안전 처리
   useEffect(() => {
     if (currentStep !== "show_detail_options") return;
 
@@ -217,7 +221,7 @@ const ConversationalOrder = () => {
     }
   }, [currentStep, optionGroups, currentOptionGroupIndex]);
 
-  /* 쇼 옵션 들어오면 최초 1회 안내 멘트 */
+  // 쇼 옵션 들어오면 최초 1회 안내 멘트
   useEffect(() => {
     if (currentStep === "show_detail_options" && !optionIntroSpoken) {
       if (optionGroups?.length) {
@@ -227,7 +231,7 @@ const ConversationalOrder = () => {
     }
   }, [currentStep, optionGroups, optionIntroSpoken]);
 
-  /* 주문 초기화 */
+  // 주문 초기화
   const resetForNewOrder = () => {
     setMessages([
       {
@@ -248,7 +252,15 @@ const ConversationalOrder = () => {
     setOptionIntroSpoken(false);
   };
 
-  /* 바텀시트 렌더링 */
+  // 처음으로 버튼
+  const goHome = () => {
+    window.speechSynthesis.cancel();
+    sendSessionEnd();
+    resetState();
+    navigate("/");
+  };
+
+  // 바텀시트 렌더링
   const renderBottomSheet = () => {
     if (!currentStep) return null;
 
@@ -309,7 +321,7 @@ const ConversationalOrder = () => {
               onClick={() =>
                 handleChoiceSelect(opt.name, () => nextOptionGroup(opt.id))
               }
-              className="mb-[1vh] w-full rounded-xl border bg-white px-[3vw] py-[2vh] text-left text-[6vw]"
+              className="mb-[1vh] w-full rounded-xl border bg-white px-[3vw] py-[2vh] text-left text-[5vw] font-semibold"
             >
               {opt.name} (+{opt.extraPrice}원)
             </button>
@@ -321,7 +333,7 @@ const ConversationalOrder = () => {
             handleChoiceSelect={handleChoiceSelect}
           />
 
-          <p className="mt-[2vh] text-center text-[3.2vw] text-(--text-secondary)">
+          <p className="mt-[1vh] text-center text-[4vw] text-(--text-secondary)">
             {currentOptionGroupIndex + 1} / {optionGroups?.length} 단계
           </p>
         </BottomSheet>
@@ -353,42 +365,94 @@ const ConversationalOrder = () => {
     if (currentStep === "cart") {
       const { cart, totalPrice } = useKioskStore.getState();
 
+      const orderedCart = cart.slice().reverse(); // 최신순
+
+      const CARD_WIDTH = window.innerWidth * 0.9 + window.innerWidth * 0.04; // 카드 너비 + gap
+
+      const scrollLeft = () => {
+        scrollRef.current?.scrollBy({
+          left: -CARD_WIDTH,
+          behavior: "smooth",
+        });
+      };
+
+      const scrollRight = () => {
+        scrollRef.current?.scrollBy({
+          left: CARD_WIDTH,
+          behavior: "smooth",
+        });
+      };
+
       return (
         <BottomSheet title="현재 주문 내역">
-          {cart.map((item) => (
-            <div
-              key={item.orderDetailId}
-              className="relative mb-[1vh] rounded-2xl border bg-white p-[5vw]" /* 카드 전체 확대 */
+          {/* 좌우 화살표 */}
+          <div className="mb-[2vh] flex w-full items-center justify-between">
+            <button
+              onClick={scrollLeft}
+              className="px-[4vw] py-[1vh] text-[8vw] active:scale-90"
             >
-              <button
-                onClick={() =>
-                  useKioskStore.getState().deleteCartItem(item.orderDetailId)
-                }
-                className="absolute top-[10vh] right-[4vw] text-[7vw] font-bold text-red-500" /* 삭제 버튼 위치/크기 조정 */
+              ←
+            </button>
+
+            <p className="text-[5vw] font-semibold">
+              {orderedCart.length}개의 메뉴
+            </p>
+
+            <button
+              onClick={scrollRight}
+              className="px-[4vw] py-[1vh] text-[8vw] active:scale-90"
+            >
+              →
+            </button>
+          </div>
+
+          {/* 가로 슬라이드 카드 리스트 */}
+          <div
+            ref={scrollRef}
+            className="flex w-full gap-[4vw] overflow-x-auto scroll-smooth pb-[2vh]"
+          >
+            {orderedCart.map((item) => (
+              <div
+                key={item.orderDetailId}
+                className="relative w-[80vw] shrink-0 rounded-4xl bg-[#f7ecc7] p-[5vw] shadow-md"
               >
-                삭제
-              </button>
-              <p className="text-[6vw] font-semibold">{item.menuName}</p>
-              <p className="mt-[1vw] text-[4.5vw]">
-                {item.temperature} / {item.size}
-              </p>
-              {item.options.map((opt) => (
-                <p
-                  key={opt.optionValueId}
-                  className="mt-[0.5vw] text-[4vw] text-(--text-secondary)"
+                <button
+                  onClick={() =>
+                    useKioskStore.getState().deleteCartItem(item.orderDetailId)
+                  }
+                  className="absolute top-1/2 right-[4vw] -translate-y-1/2 text-[5vw] font-bold text-red-500"
                 >
-                  + {opt.optionValueName} ({opt.extraPrice}원)
+                  삭제
+                </button>
+
+                <p className="text-[6vw] font-semibold">{item.menuName}</p>
+                <p className="mt-[1vw] text-[4.5vw]">
+                  {item.temperature} / {item.size}
                 </p>
-              ))}
-              <p className="mt-[1vh] text-[6vw] font-bold">
-                {item.lineTotalPrice.toLocaleString()}원
-              </p>
-            </div>
-          ))}
 
-          <p className="mt-1 text-[8vw] font-bold">총 금액: {totalPrice}원</p>
+                {item.options.map((opt) => (
+                  <p
+                    key={opt.optionValueId}
+                    className="mt-[0.5vw] text-[4vw] text-(--text-secondary)"
+                  >
+                    + {opt.optionValueName} ({opt.extraPrice}원)
+                  </p>
+                ))}
 
-          <div className="mt-[3vh] flex gap-[3vw]">
+                <p className="mt-[1vh] text-[6vw] font-bold">
+                  {item.lineTotalPrice.toLocaleString()}원
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {/* 총 금액 */}
+          <p className="mt-[2vh] text-[7vw] font-bold">
+            총 금액: {totalPrice}원
+          </p>
+
+          {/* 버튼 영역 */}
+          <div className="mt-[1vh] flex gap-[3vw]">
             <button
               className="flex-1 rounded-xl bg-green-600 px-[4vw] py-[2vh] text-[6vw] text-white shadow-md active:scale-95"
               onClick={() => {
@@ -420,7 +484,8 @@ const ConversationalOrder = () => {
   };
 
   return (
-    <div className="relative flex h-full w-full flex-col bg-(--bg-primary)">
+    <div className="flex h-full w-full flex-col bg-(--bg-primary)">
+      {/* CONTENT - 스크롤 영역 */}
       <div className="flex flex-1 flex-col items-center overflow-hidden px-[4vw] pt-[6vh]">
         <div className="mb-[4vh] flex items-center gap-[3vw]">
           <img src={masil} alt="masil" className="h-auto w-[22vw]" />
@@ -429,6 +494,7 @@ const ConversationalOrder = () => {
           </div>
         </div>
 
+        {/* 메시지 스크롤 영역 */}
         <div className="w-full flex-1 overflow-y-auto px-[1vw] pb-[2vh]">
           {messages.map((m) => (
             <div
@@ -451,6 +517,7 @@ const ConversationalOrder = () => {
           <div ref={bottomRef} />
         </div>
 
+        {/* 추천 메뉴 영역 */}
         {recommendedItems.length > 0 && (
           <div className="mt-[3vh] w-full px-[2vw]">
             {canRetryConverse && (
@@ -488,6 +555,7 @@ const ConversationalOrder = () => {
           </div>
         )}
 
+        {/* 음성 입력 버튼 */}
         {isVoiceStage && (
           <>
             <button
@@ -506,21 +574,21 @@ const ConversationalOrder = () => {
         )}
       </div>
 
+      {/* 바텀시트 */}
       {renderBottomSheet()}
 
-      <div className="flex h-[10vh] w-full items-center justify-between border-t bg-white px-[6vw]">
-        <button onClick={() => navigate(-1)} className="text-[5vw]">
-          ← 이전
+      {/* FOOTER */}
+      <div className="flex h-[10vh] w-full items-center justify-between border-t bg-white px-[4vw] py-[6vh]">
+        <button
+          onClick={goHome}
+          className="rounded-xl bg-(--text-tertiary) px-[4vw] py-[2vh] text-[5vw] text-white shadow-sm active:scale-95"
+        >
+          처음으로
         </button>
 
-        <div
-          onClick={() => navigate("/order/confirmation")}
-          className="text-[5vw]"
-        >
-          주문 확인하기
-        </div>
-
-        <button className="text-[5vw]">직원 호출</button>
+        <button className="rounded-xl bg-(--accent) px-[4vw] py-[2vh] text-[5vw] text-white shadow-sm active:scale-95">
+          직원 호출
+        </button>
       </div>
     </div>
   );
@@ -528,7 +596,7 @@ const ConversationalOrder = () => {
 
 export default ConversationalOrder;
 
-/* BottomSheet */
+// BottomSheet
 const BottomSheet = ({
   title,
   children,
@@ -536,13 +604,13 @@ const BottomSheet = ({
   title: string;
   children: React.ReactNode;
 }) => (
-  <div className="fixed bottom-0 left-0 w-full rounded-t-3xl bg-white p-[5vw] shadow-xl">
+  <div className="fixed bottom-[12vh] left-0 w-full rounded-t-3xl bg-white p-[5vw] shadow-xl">
     <p className="mb-[3vw] text-[6vw] font-semibold">{title}</p>
     <div className="flex flex-col gap-[2vw]">{children}</div>
   </div>
 );
 
-/* 버튼 */
+// 버튼
 const ChoiceButton = ({
   label,
   onClick,
@@ -554,7 +622,7 @@ const ChoiceButton = ({
 }) => (
   <button
     onClick={() => handleChoiceSelect(label, onClick)}
-    className="w-full rounded-xl bg-(--color-primary) px-[4vw] py-[2vh] text-[4vw] text-white shadow-md active:scale-95"
+    className="w-full rounded-xl bg-(--color-primary) px-[4vw] py-[2vh] text-[5vw] text-white shadow-md active:scale-95"
   >
     {label}
   </button>
