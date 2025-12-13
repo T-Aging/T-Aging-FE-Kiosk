@@ -24,9 +24,14 @@ const OrderConfirmation = () => {
       spokenRef.current = true;
       playTTS("마지막으로 주문 내역을 확인해주세요.");
     }
-
-    return () => stopTTS();
   }, [setTitle, getCart, playTTS, stopTTS]);
+
+  // 화면 나갈 때 TTS 자동 중단
+  useEffect(() => {
+    return () => {
+      window.speechSynthesis.cancel();
+    };
+  }, []);
 
   const handleNext = () => {
     stopTTS();

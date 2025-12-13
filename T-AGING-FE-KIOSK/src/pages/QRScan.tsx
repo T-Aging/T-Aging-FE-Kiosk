@@ -56,6 +56,13 @@ const QRScan = () => {
     sendMessage(msg as never); // 충돌 방지용
   };
 
+  // 화면 나갈 때 TTS 자동 중단
+  useEffect(() => {
+    return () => {
+      window.speechSynthesis.cancel();
+    };
+  }, []);
+
   // WebSocket 응답 처리
   useEffect(() => {
     if (!lastReply) return;

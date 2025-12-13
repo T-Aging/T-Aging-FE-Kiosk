@@ -31,6 +31,13 @@ const RecentOrders = () => {
   // 상세 팝업
   const [showDetail, setShowDetail] = useState(false);
 
+  // 화면 나갈 때 TTS 자동 중단
+  useEffect(() => {
+    return () => {
+      window.speechSynthesis.cancel();
+    };
+  }, []);
+
   useEffect(() => {
     setTitle("최근 주문");
 

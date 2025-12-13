@@ -12,6 +12,13 @@ const VerificationMethod = () => {
 
   const playedRef = useRef(false); // 중복 재생 방지
 
+  // 화면 나갈 때 TTS 자동 중단
+  useEffect(() => {
+    return () => {
+      window.speechSynthesis.cancel();
+    };
+  }, []);
+
   useEffect(() => {
     setTitle("회원 인증");
 

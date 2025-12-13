@@ -28,6 +28,13 @@ const OrderComplete = () => {
     orderConfirm();
   }, [setTitle, orderConfirm]);
 
+  // 화면 나갈 때 TTS 자동 중단
+  useEffect(() => {
+    return () => {
+      window.speechSynthesis.cancel();
+    };
+  }, []);
+
   // order_confirm 응답 감지 → 대기번호 적용
   useEffect(() => {
     if (!lastReply || lastReply.type !== "order_confirm") return;

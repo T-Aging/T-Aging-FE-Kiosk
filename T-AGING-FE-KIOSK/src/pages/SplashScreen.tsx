@@ -15,11 +15,16 @@ const SplashScreen = () => {
 
   const startedRef = useRef(false);
 
+  // 화면 나갈 때 TTS 자동 중단
+  useEffect(() => {
+    return () => {
+      window.speechSynthesis.cancel();
+    };
+  }, []);
+
   useEffect(() => {
     setTitle("마실이 키오스크");
     playTTS("마실이 키오스크에 오신 걸 환영합니다!");
-
-    return () => stopTTS();
   }, [setTitle, playTTS, stopTTS]);
 
   const handleStart = () => {

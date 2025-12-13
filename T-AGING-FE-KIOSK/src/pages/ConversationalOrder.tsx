@@ -21,6 +21,13 @@ const ConversationalOrder = () => {
   const { playTTS } = useTTS();
   const { playSTT } = useSTT();
 
+  // 화면 나갈 때 TTS 자동 중단
+  useEffect(() => {
+    return () => {
+      window.speechSynthesis.cancel();
+    };
+  }, []);
+
   const {
     sendConverse,
     lastReply,

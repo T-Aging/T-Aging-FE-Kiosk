@@ -21,6 +21,12 @@ const MembershipCheck = () => {
     }
   }, [setTitle, playTTS]);
 
+  useEffect(() => {
+    return () => {
+      window.speechSynthesis.cancel();
+    };
+  }, []);
+
   const goMember = () => {
     stopTTS();
     navigate("/membership/verify-method");
