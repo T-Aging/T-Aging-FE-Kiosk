@@ -76,7 +76,7 @@ const PhoneInput = () => {
   // 확인 버튼 WebSocket 요청
   const handleConfirm = () => {
     const digitsOnly = phone.replace(/\D/g, "");
-    if (digitsOnly.length < 10) return;
+    if (digitsOnly.length !== 11) return;
 
     const msg: LocalPhoneLoginRequest = {
       type: "phone_num_login",
@@ -111,37 +111,42 @@ const PhoneInput = () => {
 
   return (
     <div className="flex h-full w-full flex-col bg-(--bg-primary)">
-      <div className="flex flex-1 flex-col items-center overflow-y-auto pt-[1vh]">
-        <div className="mb-[3vh] flex w-full flex-col items-center">
+      <div className="flex flex-1 flex-col items-center overflow-hidden pt-[0.5vh]">
+        <div className="mb-[2vh] flex w-full flex-col items-center">
           <div className="flex items-center">
-            <img src={masil} alt="masil" className="mb-[1vh] h-auto w-[25vw]" />
-            <div className="rounded-2xl border bg-white px-[5vw] py-[2vh] text-[5vw] shadow-md">
+            <img src={masil} alt="masil" className="h-auto w-[25vw]" />
+            <div className="rounded-2xl border bg-white px-[4vw] py-[1.5vh] text-[5vw] shadow-md">
               전화번호를 입력해주세요
             </div>
           </div>
 
-          <div className="flex w-full items-center justify-center gap-[2vw]">
-            <div className="flex h-[15vw] w-[70vw] items-center justify-center rounded-2xl border-4 bg-white px-[3vw] shadow-md">
-              <span className="overflow-hidden text-[7vw] font-semibold">
-                {phone}
+          <div className="mt-[3vh] flex w-full items-center justify-center gap-[2vw]">
+            <div className="flex h-[14vw] w-[65vw] items-center justify-center rounded-2xl border-4 bg-white px-[3vw] shadow-md">
+              <span
+                className={`text-center text-[6.0vw] leading-none font-semibold ${
+                  phone === "" ? "text-(--text-secondary)/40" : ""
+                }`}
+              >
+                {phone === "" ? "숫자 버튼을 누르면 입력" : phone}
               </span>
             </div>
 
             <button
               onClick={handleDelete}
-              className="flex h-[15vw] w-[15vw] items-center justify-center rounded-2xl bg-(--text-tertiary) text-[4vw] text-white shadow-md active:scale-95"
+              className="flex h-[14vw] w-[16vw] items-center justify-center rounded-2xl bg-(--text-tertiary) text-[4vw] text-white shadow-md active:scale-95"
             >
               삭제
             </button>
           </div>
         </div>
 
-        <div className="grid w-[80vw] grid-cols-3 grid-rows-3 gap-[2vw]">
+        {/* 숫자 패드 */}
+        <div className="mt-[1vh] grid w-[80vw] grid-cols-3 grid-rows-3 gap-[1.5vw]">
           {["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"].map((n) => (
             <button
               key={n}
               onClick={() => handleNumberClick(n)}
-              className="flex items-center justify-center rounded-4xl border-4 bg-white py-[1vh] text-[10vw] text-(--text-secondary) active:scale-95"
+              className="flex items-center justify-center rounded-4xl border-4 bg-white py-[0.6vh] text-[8vw] text-(--text-secondary) active:scale-95"
             >
               {n}
             </button>
@@ -149,8 +154,8 @@ const PhoneInput = () => {
 
           <button
             onClick={handleConfirm}
-            className={`col-span-2 col-start-2 flex items-center justify-center rounded-4xl py-[1vh] text-[10vw] font-semibold shadow-md active:scale-95 ${
-              phone.replace(/\D/g, "").length >= 10
+            className={`col-span-2 col-start-2 flex items-center justify-center rounded-4xl py-[0.6vh] text-[8vw] font-semibold shadow-md active:scale-95 ${
+              phone.replace(/\D/g, "").length >= 11
                 ? "bg-(--color-primary) text-white"
                 : "pointer-events-none bg-(--color-primary) text-white opacity-40"
             }`}
