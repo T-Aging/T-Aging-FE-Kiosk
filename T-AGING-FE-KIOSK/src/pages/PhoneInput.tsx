@@ -43,9 +43,14 @@ const PhoneInput = () => {
         "전화번호를 입력해주시고 확인을 눌러주시면 회원 인증이 진행됩니다.",
       );
     }
-
-    return () => stopTTS();
   }, [setTitle, playTTS, stopTTS]);
+
+  useEffect(() => {
+    return () => {
+      window.speechSynthesis.cancel();
+      stopTTS();
+    };
+  }, []);
 
   // 전화번호 포맷팅
   const formatPhone = (value: string) => {
@@ -99,6 +104,7 @@ const PhoneInput = () => {
   }, [lastReply, navigate, playTTS, stopTTS]);
 
   const handleGoBack = () => {
+    window.speechSynthesis.cancel();
     stopTTS();
     navigate(-1);
   };
