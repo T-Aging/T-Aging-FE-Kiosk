@@ -102,15 +102,15 @@ const QRScan = () => {
           </div>
         </div>
 
-        <div className="mb-[4vh] flex h-[45vw] w-[45vw] items-center justify-center overflow-hidden rounded-2xl border-4 bg-black shadow-md">
+        <div className="mb-[4vh] flex h-[50vw] w-[50vw] items-center justify-center overflow-hidden rounded-2xl border-4 bg-black shadow-md">
           <video
             ref={videoRef}
             style={{ width: "100%", height: "100%", objectFit: "cover" }}
           />
         </div>
 
-        <p className="mt-[1vh] text-center text-[3vw] text-(--text-secondary)">
-          QR 코드를 스캔 영역에 가까이 대주세요
+        <p className="mt-[1vh] text-center text-[5vw] font-semibold text-(--text-secondary)">
+          QR 코드를 스캔 영역에 <br /> 가까이 대주세요
         </p>
       </div>
     </div>
