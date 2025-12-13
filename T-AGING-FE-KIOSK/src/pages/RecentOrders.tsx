@@ -21,6 +21,8 @@ const RecentOrders = () => {
     getRecentOrders,
     getRecentOrderDetail,
     recentOrderToCart,
+    sendSessionEnd,
+    resetState,
   } = useKioskStore();
 
   // 음성 안내 중복 방지
@@ -75,20 +77,29 @@ const RecentOrders = () => {
     navigate(-1);
   };
 
+  // 처음으로 버튼
+  const goHome = () => {
+    stopTTS();
+    sendSessionEnd();
+    resetState();
+    navigate("/");
+  };
+
   return (
     <div className="flex h-full w-full flex-col bg-(--bg-primary)">
-      {/* CONTENT */}
-      <div className="flex flex-1 flex-col items-center overflow-y-auto px-[4vw] pt-[8vh]">
-        <div className="w-full rounded-2xl border border-(--border-soft) bg-white px-[4vw] py-[3vh] shadow-md">
-          <div className="flex items-center">
-            <img src={masil} alt="masil" className="mb-[1vh] h-auto w-[20vw]" />
-            <div className="rounded-2xl border border-(--border-light) bg-white px-[5vw] py-[2vh] text-[5vw] text-(--text-primary) shadow-md">
-              최근에 주문했던 음료를 <br /> 드릴까요?
-            </div>
+      {/* CONTENT - 스크롤 영역 */}
+      <div className="flex flex-1 flex-col overflow-hidden px-[4vw] pt-[8vh]">
+        {/* 상단 헤더 고정 */}
+        <div className="mb-[3vh] flex items-center">
+          <img src={masil} alt="masil" className="mb-[1vh] h-auto w-[20vw]" />
+          <div className="rounded-2xl border border-(--border-light) bg-white px-[5vw] py-[2vh] text-[5vw] text-(--text-primary) shadow-md">
+            최근에 주문했던 음료를 <br /> 드릴까요?
           </div>
+        </div>
 
-          {/* 리스트 */}
-          <div className="mt-[3vh] mb-[3vh] flex flex-col gap-[2vh]">
+        {/* 리스트 스크롤 영역 */}
+        <div className="flex-1 overflow-y-auto px-[1vw]">
+          <div className="flex flex-col gap-[2vh]">
             {recentOrders?.length === 0 && (
               <p className="text-center text-[4vw] text-(--text-secondary)">
                 최근 주문 내역이 없습니다.
@@ -135,11 +146,14 @@ const RecentOrders = () => {
               );
             })}
           </div>
+        </div>
 
+        {/* 새로 주문하기 버튼 - 고정 */}
+        <div className="w-full py-[2vh]">
           <button
             type="button"
             onClick={handleNewOrder}
-            className="mt-[1vh] w-full rounded-xl bg-(--color-primary) py-[2.4vh] text-[5vw] font-semibold text-(--text-inverse) shadow-md active:scale-95"
+            className="w-full rounded-xl bg-(--color-primary) py-[2.4vh] text-[5vw] font-semibold text-(--text-inverse) shadow-md active:scale-95"
           >
             새로 주문하기
           </button>
@@ -155,6 +169,14 @@ const RecentOrders = () => {
             className="flex items-center justify-center rounded-xl border border-(--border-light) bg-white px-[3vw] py-[1.8vh] text-[5vw] text-(--text-primary) shadow-sm"
           >
             ← 이전
+          </button>
+
+          <button
+            type="button"
+            onClick={goHome}
+            className="rounded-xl bg-(--text-tertiary) px-[4vw] py-[1.8vh] text-[5vw] text-(--text-inverse) shadow-sm active:scale-95"
+          >
+            처음으로
           </button>
 
           <button
