@@ -7,7 +7,6 @@ import { useSTT } from "@/hooks/useSTT";
 import { useKioskStore } from "@/store/useWebSocketStore";
 import type { ConverseItem, ConverseResponse } from "@/types/KioskResponse";
 
-// 메시지 타입
 type Message = {
   id: number;
   text: string;
@@ -17,11 +16,9 @@ type Message = {
 const ConversationalOrder = () => {
   const navigate = useNavigate();
   const { setTitle } = useOutletContext<{ setTitle: (v: string) => void }>();
-
   const { playTTS } = useTTS();
   const { playSTT } = useSTT();
 
-  // 화면 나갈 때 TTS 자동 중단
   useEffect(() => {
     return () => {
       window.speechSynthesis.cancel();
@@ -44,8 +41,9 @@ const ConversationalOrder = () => {
   } = useKioskStore();
 
   const { currentOptionGroupIndex, nextOptionGroup } = useKioskStore.getState();
-
-  const scrollRef = useRef<HTMLDivElement | null>(null);
+  // 슬라이드 index 상태
+  const [slideIndex, setSlideIndex] = useState(0);
+  const bottomRef = useRef<HTMLDivElement | null>(null);
 
   const [messages, setMessages] = useState<Message[]>([
     { id: 1, text: "무엇을 도와드릴까요? 주문을 말씀해주세요!", sender: "bot" },
@@ -53,12 +51,9 @@ const ConversationalOrder = () => {
 
   const [recommendedItems, setRecommendedItems] = useState<ConverseItem[]>([]);
   const [isListening, setIsListening] = useState(false);
-  const bottomRef = useRef<HTMLDivElement | null>(null);
-
   const [optionIntroSpoken, setOptionIntroSpoken] = useState(false);
   const [canRetryConverse, setCanRetryConverse] = useState(false);
 
-  // TTS 중복 방지
   const lastSpokenRef = useRef<string | null>(null);
   const speakOnce = (text: string) => {
     if (!text) return;
@@ -71,7 +66,6 @@ const ConversationalOrder = () => {
     setTitle("대화 주문");
   }, [setTitle]);
 
-  // 버튼 선택 처리
   const handleChoiceSelect = (label: string, callback: () => void) => {
     setMessages((prev) => [
       ...prev,
@@ -81,7 +75,6 @@ const ConversationalOrder = () => {
     callback();
   };
 
-  // converse 응답 처리
   useEffect(() => {
     if (!lastReply || lastReply.type !== "converse") return;
 
@@ -102,14 +95,12 @@ const ConversationalOrder = () => {
     }
   }, [lastReply]);
 
-  // converse 응답 오면 마이크 자동 활성화
   useEffect(() => {
     if (lastReply?.type === "converse") {
       useKioskStore.setState({ isVoiceStage: true });
     }
   }, [lastReply]);
 
-  // 질문 출력
   const shouldSpeakQuestion = () => {
     if (!currentStep || !currentQuestion) return false;
     if (currentStep === "show_detail_options") return false;
@@ -118,7 +109,6 @@ const ConversationalOrder = () => {
 
   useEffect(() => {
     if (!shouldSpeakQuestion()) return;
-
     const safeText = currentQuestion ?? "";
     const exists = messages.some((m) => m.text === safeText);
 
@@ -132,12 +122,10 @@ const ConversationalOrder = () => {
     if (safeText) speakOnce(safeText);
   }, [currentStep, currentQuestion, messages]);
 
-  // 스크롤 자동
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // 추천 메뉴 선택
   const startOrder = (menuName: string) => {
     setMessages((prev) => [
       ...prev,
@@ -154,7 +142,6 @@ const ConversationalOrder = () => {
     setCanRetryConverse(false);
   };
 
-  // 음성 녹음
   const startRecording = async () => {
     setIsListening(true);
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -190,13 +177,11 @@ const ConversationalOrder = () => {
       ...prev,
       { id: Date.now(), sender: "user", text: msg },
     ]);
-
     sendConverse(msg);
     setRecommendedItems([]);
     setCanRetryConverse(false);
   };
 
-  // 추천 재시도
   const retryConverse = () => {
     setMessages((prev) => [
       ...prev,
@@ -211,24 +196,19 @@ const ConversationalOrder = () => {
     setCanRetryConverse(false);
   };
 
-  // 옵션 자동 이동 안전 처리
   useEffect(() => {
     if (currentStep !== "show_detail_options") return;
-
     if (!optionGroups || optionGroups.length === 0) {
       nextOptionGroup(null);
       return;
     }
-
     const group = optionGroups[currentOptionGroupIndex];
-
     if (!group || group.options.length === 0) {
       nextOptionGroup(null);
       return;
     }
   }, [currentStep, optionGroups, currentOptionGroupIndex]);
 
-  // 쇼 옵션 들어오면 최초 1회 안내 멘트
   useEffect(() => {
     if (currentStep === "show_detail_options" && !optionIntroSpoken) {
       if (optionGroups?.length) {
@@ -238,7 +218,6 @@ const ConversationalOrder = () => {
     }
   }, [currentStep, optionGroups, optionIntroSpoken]);
 
-  // 주문 초기화
   const resetForNewOrder = () => {
     setMessages([
       {
@@ -259,7 +238,6 @@ const ConversationalOrder = () => {
     setOptionIntroSpoken(false);
   };
 
-  // 처음으로 버튼
   const goHome = () => {
     window.speechSynthesis.cancel();
     sendSessionEnd();
@@ -267,7 +245,15 @@ const ConversationalOrder = () => {
     navigate("/");
   };
 
-  // 바텀시트 렌더링
+  const shouldShowMic =
+    isVoiceStage &&
+    recommendedItems.length === 0 &&
+    currentStep !== "ask_temperature" &&
+    currentStep !== "ask_size" &&
+    currentStep !== "ask_detail_option_yn" &&
+    currentStep !== "show_detail_options" &&
+    currentStep !== "cart";
+
   const renderBottomSheet = () => {
     if (!currentStep) return null;
 
@@ -371,33 +357,25 @@ const ConversationalOrder = () => {
 
     if (currentStep === "cart") {
       const { cart, totalPrice } = useKioskStore.getState();
+      const orderedCart = cart.slice().reverse();
 
-      const orderedCart = cart.slice().reverse(); // 최신순
+      // 한 카드 = 92vw (88vw + gap 4vw)
+      const CARD_VW = 92;
 
-      const CARD_WIDTH = window.innerWidth * 0.9 + window.innerWidth * 0.04; // 카드 너비 + gap
+      const maxIndex = orderedCart.length - 1;
 
-      const scrollLeft = () => {
-        scrollRef.current?.scrollBy({
-          left: -CARD_WIDTH,
-          behavior: "smooth",
-        });
+      const goLeft = () => {
+        setSlideIndex((prev) => Math.max(prev - 1, 0));
       };
 
-      const scrollRight = () => {
-        scrollRef.current?.scrollBy({
-          left: CARD_WIDTH,
-          behavior: "smooth",
-        });
+      const goRight = () => {
+        setSlideIndex((prev) => Math.min(prev + 1, maxIndex));
       };
 
       return (
         <BottomSheet title="현재 주문 내역">
-          {/* 좌우 화살표 */}
           <div className="mb-[2vh] flex w-full items-center justify-between">
-            <button
-              onClick={scrollLeft}
-              className="px-[4vw] py-[1vh] text-[8vw] active:scale-90"
-            >
+            <button onClick={goLeft} className="px-[4vw] py-[1vh] text-[8vw]">
               ←
             </button>
 
@@ -405,63 +383,65 @@ const ConversationalOrder = () => {
               {orderedCart.length}개의 메뉴
             </p>
 
-            <button
-              onClick={scrollRight}
-              className="px-[4vw] py-[1vh] text-[8vw] active:scale-90"
-            >
+            <button onClick={goRight} className="px-[4vw] py-[1vh] text-[8vw]">
               →
             </button>
           </div>
 
-          {/* 가로 슬라이드 카드 리스트 */}
-          <div
-            ref={scrollRef}
-            className="flex w-full gap-[4vw] overflow-x-auto scroll-smooth pb-[2vh]"
-          >
-            {orderedCart.map((item) => (
-              <div
-                key={item.orderDetailId}
-                className="relative w-[80vw] shrink-0 rounded-4xl bg-[#f7ecc7] p-[5vw] shadow-md"
-              >
-                <button
-                  onClick={() =>
-                    useKioskStore.getState().deleteCartItem(item.orderDetailId)
-                  }
-                  className="absolute top-1/2 right-[4vw] -translate-y-1/2 text-[5vw] font-bold text-red-500"
+          {/* transform 기반 슬라이드 */}
+          <div className="w-full overflow-hidden">
+            <div
+              className="flex gap-[4vw] transition-transform duration-300"
+              style={{
+                width: `${orderedCart.length * CARD_VW}vw`,
+                transform: `translateX(-${slideIndex * CARD_VW}vw)`,
+              }}
+            >
+              {orderedCart.map((item) => (
+                <div
+                  key={item.orderDetailId}
+                  className="relative w-[88vw] shrink-0 rounded-4xl bg-[#f7ecc7] p-[5vw] shadow-md"
                 >
-                  삭제
-                </button>
-
-                <p className="text-[6vw] font-semibold">{item.menuName}</p>
-                <p className="mt-[1vw] text-[4.5vw]">
-                  {item.temperature} / {item.size}
-                </p>
-
-                {item.options.map((opt) => (
-                  <p
-                    key={opt.optionValueId}
-                    className="mt-[0.5vw] text-[4vw] text-(--text-secondary)"
+                  <button
+                    onClick={() =>
+                      useKioskStore
+                        .getState()
+                        .deleteCartItem(item.orderDetailId)
+                    }
+                    className="absolute top-1/2 right-[4vw] -translate-y-1/2 text-[5vw] font-bold text-red-500"
                   >
-                    + {opt.optionValueName} ({opt.extraPrice}원)
-                  </p>
-                ))}
+                    삭제
+                  </button>
 
-                <p className="mt-[1vh] text-[6vw] font-bold">
-                  {item.lineTotalPrice.toLocaleString()}원
-                </p>
-              </div>
-            ))}
+                  <p className="text-[6vw] font-semibold">{item.menuName}</p>
+                  <p className="mt-[1vw] text-[4.5vw]">
+                    {item.temperature} / {item.size}
+                  </p>
+
+                  {item.options.map((opt) => (
+                    <p
+                      key={opt.optionValueId}
+                      className="mt-[0.5vw] text-[4vw] text-(--text-secondary)"
+                    >
+                      + {opt.optionValueName} ({opt.extraPrice}원)
+                    </p>
+                  ))}
+
+                  <p className="mt-[1vh] text-[6vw] font-bold">
+                    {item.lineTotalPrice.toLocaleString()}원
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
 
-          {/* 총 금액 */}
           <p className="mt-[2vh] text-[7vw] font-bold">
             총 금액: {totalPrice}원
           </p>
 
-          {/* 버튼 영역 */}
           <div className="mt-[1vh] flex gap-[3vw]">
             <button
-              className="flex-1 rounded-xl bg-green-600 px-[4vw] py-[2vh] text-[6vw] text-white shadow-md active:scale-95"
+              className="flex-1 rounded-xl bg-green-600 px-[4vw] py-[2vh] text-[6vw] text-white"
               onClick={() => {
                 useKioskStore.setState({
                   currentStep: null,
@@ -477,7 +457,7 @@ const ConversationalOrder = () => {
             </button>
 
             <button
-              className="flex-1 rounded-xl bg-blue-600 px-[4vw] py-[2vh] text-[6vw] text-white shadow-md active:scale-95"
+              className="flex-1 rounded-xl bg-blue-600 px-[4vw] py-[2vh] text-[6vw] text-white"
               onClick={() => navigate("/order/confirmation")}
             >
               주문 완료
@@ -492,7 +472,6 @@ const ConversationalOrder = () => {
 
   return (
     <div className="flex h-full w-full flex-col bg-(--bg-primary)">
-      {/* CONTENT - 스크롤 영역 */}
       <div className="flex flex-1 flex-col items-center overflow-hidden px-[4vw] pt-[6vh]">
         <div className="mb-[4vh] flex items-center gap-[3vw]">
           <img src={masil} alt="masil" className="h-auto w-[22vw]" />
@@ -501,7 +480,6 @@ const ConversationalOrder = () => {
           </div>
         </div>
 
-        {/* 메시지 스크롤 영역 */}
         <div className="w-full flex-1 overflow-y-auto px-[1vw] pb-[2vh]">
           {messages.map((m) => (
             <div
@@ -524,13 +502,12 @@ const ConversationalOrder = () => {
           <div ref={bottomRef} />
         </div>
 
-        {/* 추천 메뉴 영역 */}
         {recommendedItems.length > 0 && (
           <div className="mt-[3vh] w-full px-[2vw]">
             {canRetryConverse && (
               <button
                 onClick={retryConverse}
-                className="mb-[2vh] w-full rounded-xl bg-(--accent) px-[4vw] py-[2vh] text-[4vw] text-white shadow-md active:scale-95"
+                className="mb-[2vh] w-full rounded-xl bg-(--accent) px-[4vw] py-[2vh] text-[4vw] text-white"
               >
                 다시 말하기
               </button>
@@ -540,7 +517,7 @@ const ConversationalOrder = () => {
               아래에서 메뉴를 선택해보세요!
             </p>
 
-            <div className="grid grid-cols-2 gap-[3vw]">
+            <div className="mb-[2vh] grid grid-cols-2 gap-[3vw]">
               {recommendedItems.map((item) => (
                 <button
                   key={item.name}
@@ -562,8 +539,7 @@ const ConversationalOrder = () => {
           </div>
         )}
 
-        {/* 음성 입력 버튼 */}
-        {isVoiceStage && (
+        {shouldShowMic && (
           <>
             <button
               onClick={startRecording}
@@ -581,19 +557,17 @@ const ConversationalOrder = () => {
         )}
       </div>
 
-      {/* 바텀시트 */}
       {renderBottomSheet()}
 
-      {/* FOOTER */}
       <div className="flex h-[10vh] w-full items-center justify-between border-t bg-white px-[4vw] py-[6vh]">
         <button
           onClick={goHome}
-          className="rounded-xl bg-(--text-tertiary) px-[4vw] py-[2vh] text-[5vw] text-white shadow-sm active:scale-95"
+          className="rounded-xl bg-(--text-tertiary) px-[4vw] py-[2vh] text-[5vw] text-white"
         >
           처음으로
         </button>
 
-        <button className="rounded-xl bg-(--accent) px-[4vw] py-[2vh] text-[5vw] text-white shadow-sm active:scale-95">
+        <button className="rounded-xl bg-(--accent) px-[4vw] py-[2vh] text-[5vw] text-white">
           직원 호출
         </button>
       </div>
@@ -603,7 +577,6 @@ const ConversationalOrder = () => {
 
 export default ConversationalOrder;
 
-// BottomSheet
 const BottomSheet = ({
   title,
   children,
@@ -617,7 +590,6 @@ const BottomSheet = ({
   </div>
 );
 
-// 버튼
 const ChoiceButton = ({
   label,
   onClick,
@@ -629,7 +601,7 @@ const ChoiceButton = ({
 }) => (
   <button
     onClick={() => handleChoiceSelect(label, onClick)}
-    className="w-full rounded-xl bg-(--color-primary) px-[4vw] py-[2vh] text-[5vw] text-white shadow-md active:scale-95"
+    className="w-full rounded-xl bg-(--color-primary) px-[4vw] py-[2vh] text-[5vw] text-white"
   >
     {label}
   </button>
