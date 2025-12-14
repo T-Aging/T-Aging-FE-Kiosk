@@ -249,7 +249,16 @@ const ConversationalOrder = () => {
     navigate("/");
   };
 
+  // Intro 화면 표시 여부
+  const showIntro =
+    isFirstConversation &&
+    messages.length === 1 &&
+    messages[0].sender === "bot" &&
+    recommendedItems.length === 0 &&
+    !currentStep;
+
   const shouldShowMic =
+    !showIntro &&
     isVoiceStage &&
     recommendedItems.length === 0 &&
     currentStep !== "ask_temperature" &&
@@ -473,13 +482,6 @@ const ConversationalOrder = () => {
 
     return null;
   };
-  // Intro 화면 표시 여부
-  const showIntro =
-    isFirstConversation &&
-    messages.length === 1 &&
-    messages[0].sender === "bot" &&
-    recommendedItems.length === 0 &&
-    !currentStep;
 
   // Intro TTS 1회 실행용
   const introSpokenRef = useRef(false);
@@ -496,7 +498,7 @@ const ConversationalOrder = () => {
     <div className="flex h-full w-full flex-col bg-(--bg-primary)">
       <div className="flex flex-1 flex-col items-center overflow-hidden px-[4vw] pt-[2vh]">
         {showIntro ? (
-          <div className="flex flex-col items-center w-full">
+          <div className="flex w-full flex-col items-center">
             {/* 마실이 이미지 */}
             <img src={masil} alt="masil" className="h-auto w-[40vw]" />
 
