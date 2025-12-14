@@ -498,7 +498,7 @@ const ConversationalOrder = () => {
     <div className="flex h-full w-full flex-col bg-(--bg-primary)">
       <div className="flex flex-1 flex-col items-center overflow-hidden px-[4vw] pt-[2vh]">
         {showIntro ? (
-          <div className="flex w-full flex-col items-center">
+          <div className="flex w-full flex-col items-center overflow-y-auto">
             {/* 마실이 이미지 */}
             <img src={masil} alt="masil" className="h-auto w-[40vw]" />
 
