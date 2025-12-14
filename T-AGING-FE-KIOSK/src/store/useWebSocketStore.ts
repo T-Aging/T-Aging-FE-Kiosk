@@ -32,6 +32,9 @@ interface KioskState {
   recentOrders: RecentOrdersResponse["orders"] | null;
   recentOrderDetail: RecentOrderDetailResponse | null;
 
+  isFirstOrder: boolean;
+  setIsFirstOrder: (v: boolean) => void;
+
   connect: () => void;
   sendMessage: (msg: KioskRequest) => void;
 
@@ -82,6 +85,10 @@ export const useKioskStore = create<KioskState>((set, get) => ({
 
   recentOrders: null,
   recentOrderDetail: null,
+
+  // ⬇⬇⬇ 신규 필드 초기값
+  isFirstOrder: true,
+  setIsFirstOrder: (v) => set({ isFirstOrder: v }),
 
   connect: () => {
     if (get().socket) return;
@@ -407,7 +414,6 @@ export const useKioskStore = create<KioskState>((set, get) => ({
     });
   },
 
-
   resetState: () =>
     set({
       lastReply: null,
@@ -432,5 +438,7 @@ export const useKioskStore = create<KioskState>((set, get) => ({
 
       recentOrders: null,
       recentOrderDetail: null,
+
+      isFirstOrder: true,
     }),
 }));

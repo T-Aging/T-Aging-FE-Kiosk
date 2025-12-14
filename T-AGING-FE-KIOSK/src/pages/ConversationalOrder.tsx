@@ -44,6 +44,8 @@ const ConversationalOrder = () => {
   // 슬라이드 index 상태
   const [slideIndex, setSlideIndex] = useState(0);
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  // 대화를 처음 시작하는 상태 여부
+  const [isFirstConversation, setIsFirstConversation] = useState(true);
 
   const [messages, setMessages] = useState<Message[]>([
     { id: 1, text: "무엇을 도와드릴까요? 주문을 말씀해주세요!", sender: "bot" },
@@ -219,6 +221,8 @@ const ConversationalOrder = () => {
   }, [currentStep, optionGroups, optionIntroSpoken]);
 
   const resetForNewOrder = () => {
+    setIsFirstConversation(false); // 추가 주문이므로 Intro 금지
+
     setMessages([
       {
         id: 1,
@@ -469,38 +473,101 @@ const ConversationalOrder = () => {
 
     return null;
   };
+  // Intro 화면 표시 여부
+  const showIntro =
+    isFirstConversation &&
+    messages.length === 1 &&
+    messages[0].sender === "bot" &&
+    recommendedItems.length === 0 &&
+    !currentStep;
+
+  // Intro TTS 1회 실행용
+  const introSpokenRef = useRef(false);
+
+  useEffect(() => {
+    if (!showIntro) return;
+    if (introSpokenRef.current) return;
+
+    introSpokenRef.current = true;
+    playTTS("어떤 메뉴를 주문하고 싶으신가요? 언제든 말씀해주세요!");
+  }, [showIntro]);
 
   return (
     <div className="flex h-full w-full flex-col bg-(--bg-primary)">
-      <div className="flex flex-1 flex-col items-center overflow-hidden px-[4vw] pt-[6vh]">
-        <div className="mb-[4vh] flex items-center gap-[3vw]">
-          <img src={masil} alt="masil" className="h-auto w-[22vw]" />
-          <div className="rounded-2xl border bg-white px-[5vw] py-[2vh] text-[4vw] shadow-md">
-            주문을 말씀해주세요.
-          </div>
-        </div>
+      <div className="flex flex-1 flex-col items-center overflow-hidden px-[4vw] pt-[2vh]">
+        {showIntro ? (
+          <div className="flex flex-col items-center w-full">
+            {/* 마실이 이미지 */}
+            <img src={masil} alt="masil" className="h-auto w-[40vw]" />
 
-        <div className="w-full flex-1 overflow-y-auto px-[1vw] pb-[2vh]">
-          {messages.map((m) => (
-            <div
-              key={m.id}
-              className={`mb-[2vh] flex ${
-                m.sender === "user" ? "justify-end" : "justify-start"
-              }`}
+            {/* 말풍선 */}
+            <div className="w-[70vw] rounded-2xl border-[3.2px] border-[#E5DED0] bg-white px-[6vw] py-[2vh] text-center text-[4.2vw] leading-[6vw] shadow-lg">
+              무엇을 주문하시겠어요?
+              <br />
+              메뉴를 편하게 말씀해주세요!
+            </div>
+
+            {/* 마이크 버튼 */}
+            <button
+              onClick={startRecording}
+              className="mt-[3vh] flex h-[20vw] w-[20vw] items-center justify-center rounded-full bg-(--color-primary) shadow-lg"
             >
-              <div
-                className={`max-w-[70%] rounded-2xl px-[4vw] py-[2vh] text-[4vw] shadow-sm ${
-                  m.sender === "user"
-                    ? "bg-(--color-primary) text-white"
-                    : "border bg-white"
-                }`}
-              >
-                {m.text}
+              <img src={micIcon} alt="mic" className="w-[10vw]" />
+            </button>
+            {isListening ? (
+              <p className="mt-[1vh] text-[4vw] text-(--text-secondary)">
+                듣고 있습니다...
+              </p>
+            ) : (
+              <p className="mt-[1vh] text-[4vw] text-(--text-secondary)">
+                마이크 클릭 후 말씀해주세요!
+              </p>
+            )}
+
+            {/* 예시 문구 */}
+            <div className="mt-[2vh] w-[90%] rounded-2xl bg-[#eef3ff] p-[4vw] shadow-md">
+              <p className="mb-[1vh] text-center text-[4vw] font-semibold">
+                이렇게 말해주시면 마실이가 이해하기 좋아요!
+              </p>
+
+              <div className="flex flex-col items-center gap-[0.5vh] text-[4vw] text-(--text-secondary)">
+                <p>"아메리카노"</p>
+                <p>"오늘의 메뉴 추천해줘"</p>
               </div>
             </div>
-          ))}
-          <div ref={bottomRef} />
-        </div>
+          </div>
+        ) : (
+          <>
+            <div className="mb-[4vh] flex items-center gap-[3vw]">
+              <img src={masil} alt="masil" className="h-auto w-[22vw]" />
+              <div className="rounded-2xl border bg-white px-[5vw] py-[2vh] text-[4vw] shadow-md">
+                주문을 말씀해주세요.
+              </div>
+            </div>
+
+            <div className="w-full flex-1 overflow-y-auto px-[1vw] pb-[2vh]">
+              {messages.map((m) => (
+                <div
+                  key={m.id}
+                  className={`mb-[2vh] flex ${
+                    m.sender === "user" ? "justify-end" : "justify-start"
+                  }`}
+                >
+                  <div
+                    className={`max-w-[70%] rounded-2xl px-[4vw] py-[2vh] text-[4vw] shadow-sm ${
+                      m.sender === "user"
+                        ? "bg-(--color-primary) text-white"
+                        : "border bg-white"
+                    }`}
+                  >
+                    {m.text}
+                  </div>
+                </div>
+              ))}
+              <div ref={bottomRef} />
+            </div>
+          </>
+        )}
 
         {recommendedItems.length > 0 && (
           <div className="mt-[3vh] w-full px-[2vw]">
